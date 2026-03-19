@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+* {
+  border-color: theme("colors.line");
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  @apply bg-surface text-ink antialiased;
+  background-image:
+    radial-gradient(ellipse at 0% 0%, rgba(49, 107, 255, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(8, 11, 17, 0.04) 0%, transparent 40%),
+    linear-gradient(to bottom, #f4f5f8, #f1f2f6);
+}
+
+.grid-overlay {
+  background-image:
+    linear-gradient(rgba(11, 13, 18, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(11, 13, 18, 0.035) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ─── Core panel — precision 0.5px border ─────────────────────────────────── */
+.panel {
+  @apply rounded-2xl bg-white/[.92] shadow-soft backdrop-blur;
+  border: 0.5px solid rgba(216, 220, 227, 0.75);
+}
+
+/* ─── Dark glass panel — for dark-surface sections ───────────────────────── */
+.glass-panel {
+  @apply rounded-2xl backdrop-blur-md;
+  background: rgba(28, 34, 54, 0.6);
+  border: 0.5px solid rgba(255, 255, 255, 0.09);
+}
+
+/* ─── CTA buttons ─────────────────────────────────────────────────────────── */
+.cta-button {
+  @apply inline-flex items-center justify-center rounded-full bg-cyberLime px-6 py-3 text-sm font-semibold text-obsidian;
+  transition: background-color 150ms ease, transform 150ms ease;
+  will-change: transform;
+}
+.cta-button:hover {
+  background-color: rgba(245, 158, 11, 0.88);
+}
+
+.cta-button-dark {
+  @apply inline-flex items-center justify-center rounded-full bg-ink px-6 py-3 text-sm font-semibold text-white hover:bg-ink/90;
+  transition: background-color 150ms ease, transform 150ms ease;
+  will-change: transform;
+}
+
+.secondary-button {
+  @apply inline-flex items-center justify-center rounded-full bg-white/80 px-6 py-3 text-sm font-semibold text-ink hover:bg-white;
+  border: 0.5px solid rgba(216, 220, 227, 0.9);
+  transition: background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
+  will-change: transform;
+}
+.secondary-button:hover {
+  border-color: rgba(11, 13, 18, 0.25);
+}
+
+/* ─── Mono label / eyebrow ────────────────────────────────────────────────── */
+.mono-label {
+  @apply font-mono text-[10px] font-medium uppercase tracking-[0.18em];
+}
