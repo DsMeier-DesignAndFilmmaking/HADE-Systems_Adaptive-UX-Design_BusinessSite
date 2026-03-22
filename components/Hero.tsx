@@ -53,11 +53,14 @@ export function Hero() {
           </div>
 
           {/* Stats row */}
-          <div className="mt-10 grid max-w-xl gap-3 sm:grid-cols-3">
+          <p className="mt-10 mb-3 font-sans text-xs font-medium uppercase tracking-widest text-ink/40">
+            Goal KPIs HADE is designed to move
+          </p>
+          <div className="grid max-w-xl gap-3 sm:grid-cols-3">
             {[
-              { value: "+43%", label: "Activation lift from adaptive onboarding" },
-              { value: "31%", label: "Faster time-to-first-value in 6 weeks" },
-              { value: "24%", label: "Drop in onboarding support tickets" },
+              { value: "+20–35%", label: "Task completion lift across adaptive flows" },
+              { value: "2–3×", label: "Engagement with contextually adapted UI" },
+              { value: "−30–45%", label: "Flow abandonment at key friction points" },
             ].map(({ value, label }) => (
               <div
                 key={value}

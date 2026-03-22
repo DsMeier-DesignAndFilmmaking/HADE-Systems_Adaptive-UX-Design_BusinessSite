@@ -204,9 +204,9 @@ export const caseStudies: CaseStudy[] = [
     systemApplied:
       "We implemented a HADE-based adaptive onboarding model that branched messaging, setup sequence, and support prompts based on early product signals.",
     outcome: [
-      "Activation rate increased from 27% to 43% in 6 weeks",
-      "Time-to-first-value dropped by 31%",
-      "Support tickets during onboarding decreased by 24%"
+      "Activation lift target of 25–40% with adaptive onboarding",
+      "Time-to-first-value improved 2× with personalized flows",
+      "30-day retention improved 15–25% after adaptive onboarding"
     ]
   },
   {
