@@ -64,7 +64,7 @@ const NAV_LINKS = [
 
 function HomeIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg className="h-full w-full" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 9.5L10 3l7 6.5V17a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" />
       <path d="M7.5 18V12h5v6" />
     </svg>
@@ -73,7 +73,7 @@ function HomeIcon() {
 
 function WorkIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg className="h-full w-full" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <rect x="2" y="5" width="16" height="11" rx="1.5" />
       <path d="M7 5V4a1 1 0 011-1h4a1 1 0 011 1v1" />
       <path d="M2 10h16" />
@@ -83,7 +83,7 @@ function WorkIcon() {
 
 function ServicesIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg className="h-full w-full" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="10" cy="10" r="2.5" />
       <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42" />
     </svg>
@@ -92,7 +92,7 @@ function ServicesIcon() {
 
 function MenuIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+    <svg className="h-full w-full" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
       <path d="M3 5h14M3 10h14M3 15h14" />
     </svg>
   );
@@ -100,7 +100,7 @@ function MenuIcon() {
 
 function CloseIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+    <svg className="h-full w-full" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
       <path d="M4 4l12 12M16 4L4 16" />
     </svg>
   );
@@ -246,7 +246,9 @@ export function AdaptiveMobileNav() {
           {/* Home */}
           <motion.div whileTap={{ scale: 0.92 }}>
             <Link href="/" className="flex flex-col items-center gap-0.5 px-3 py-1 text-ink/55">
-              <HomeIcon />
+              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
+                <HomeIcon />
+              </span>
               <span className="text-[10px] font-medium">Home</span>
             </Link>
           </motion.div>
@@ -254,7 +256,9 @@ export function AdaptiveMobileNav() {
           {/* Work */}
           <motion.div whileTap={{ scale: 0.92 }}>
             <Link href="/how-it-works" className="flex flex-col items-center gap-0.5 px-3 py-1 text-ink/55">
-              <WorkIcon />
+              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
+                <WorkIcon />
+              </span>
               <span className="text-[10px] font-medium">How It Works</span>
             </Link>
           </motion.div>
@@ -283,7 +287,9 @@ export function AdaptiveMobileNav() {
           {/* Services */}
           <motion.div whileTap={{ scale: 0.92 }}>
             <Link href="/services" className="flex flex-col items-center gap-0.5 px-3 py-1 text-ink/55">
-              <ServicesIcon />
+              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
+                <ServicesIcon />
+              </span>
               <span className="text-[10px] font-medium">Services</span>
             </Link>
           </motion.div>
@@ -294,7 +300,9 @@ export function AdaptiveMobileNav() {
               onClick={() => setMenuOpen(true)}
               className="flex flex-col items-center gap-0.5 px-3 py-1 text-ink/55"
             >
-              <MenuIcon />
+              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
+                <MenuIcon />
+              </span>
               <span className="text-[10px] font-medium">Menu</span>
             </button>
           </motion.div>

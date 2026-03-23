@@ -35,6 +35,29 @@ export type CaseStudy = {
 
 export type CTAState = "awareness" | "trust" | "conversion";
 
+export type FlagshipCaseStudy = {
+  title: string;
+  subtitle: string;
+  badge?: string;
+  tier: CaseStudy["tier"];
+  sector: string;
+  accentColor: string;
+  problemStats: { stat: string; label: string }[];
+  problemSentence: string;
+  approachIntro: string;
+  approachPillars: { title: string; body: string; items?: string[] }[];
+  diagramSteps: string[];
+  diagramModules?: string[];
+  interventions: string[];
+  interventionsLabel?: string;
+  metrics: { label: string; from: string; to: string; delta: string; positive: boolean }[];
+  businessImpact: string[];
+  closingInsight: string;
+  ctaTitle: string;
+  ctaSubtext: string;
+  ctaButton: string;
+};
+
 export const navLinks = [
   { href: "/how-it-works", label: "How It Works" },
   { href: "/services", label: "Services" },
@@ -190,6 +213,205 @@ export const processSteps = [
     detail: "Track conversion impact, run experiments, and evolve the system based on evidence."
   }
 ];
+
+export const flagshipCaseStudy: FlagshipCaseStudy = {
+  title: "Activation Recovery System for B2B SaaS",
+  subtitle: "Adaptive UX Sprint (Tier 1)",
+  badge: "FLAGSHIP CASE",
+  tier: "Adaptive UX Sprint",
+  sector: "Composite Case Study",
+  accentColor: "#316BFF",
+  problemStats: [
+    { stat: "62%", label: "Onboarding drop-off before core setup" },
+    { stat: "21%", label: "Activation rate stalled" },
+    { stat: "2.5 days", label: "Time-to-value exceeded" },
+  ],
+  problemSentence:
+    "The onboarding experience was static, assumption-driven, and blind to real user intent.",
+  approachIntro:
+    "We deployed an Activation Recovery System — a lightweight adaptive layer that responds to real-time user behavior.",
+  approachPillars: [
+    {
+      title: "Signal Detection",
+      body: "Capture behavioral markers: hesitation, scroll depth, time-on-step, and exit intent.",
+    },
+    {
+      title: "Intent Classification",
+      body: "Classify users as evaluators vs. operators in real time based on early product signals.",
+    },
+    {
+      title: "Adaptive Intervention",
+      body: "Trigger the right path, prompt, and sequence for each user at the right moment.",
+    },
+  ],
+  diagramSteps: [
+    "User Enters",
+    "Signal Captured",
+    "Intent Classified",
+    "Friction Detected",
+    "HADE Decision Engine",
+    "Adaptive Path Triggered",
+    "Activation",
+  ],
+  interventions: [
+    "Adaptive onboarding paths (3–5 steps vs. 7 static)",
+    "Contextual tooltips triggered by hesitation",
+    "Dynamic branching instead of linear flows",
+    "Re-entry recovery loops",
+  ],
+  metrics: [
+    { label: "Activation Rate", from: "21%", to: "38%", delta: "+81%", positive: true },
+    { label: "Time-to-Value", from: "2.5 days", to: "1.2 days", delta: "−52%", positive: true },
+    { label: "Completion Rate", from: "38%", to: "61%", delta: "+60%", positive: true },
+    { label: "Step Drop-off Reduction", from: "—", to: "~30%", delta: "−30%", positive: true },
+  ],
+  businessImpact: [
+    "Increased product-qualified leads (PQLs)",
+    "Reduced wasted acquisition spend",
+    "Faster path to revenue",
+  ],
+  closingInsight:
+    "Most onboarding flows are static. HADE transforms onboarding into a responsive system that adapts in real time.",
+  ctaTitle: "Run an Adaptive UX Sprint",
+  ctaSubtext: "Identify your highest-impact activation opportunities in 2–3 weeks.",
+  ctaButton: "Book a Sprint",
+};
+
+export const retentionCaseStudy: FlagshipCaseStudy = {
+  title: "Retention & Expansion Engine for PLG Products",
+  subtitle: "Adaptive Module Deployment (Tier 2)",
+  tier: "Adaptive Module Deployment",
+  sector: "Composite Case Study",
+  accentColor: "#2C7B76",
+  problemStats: [
+    { stat: "Week 2", label: "Retention cliff — strong acquisition, weak hold" },
+    { stat: "Low", label: "Feature adoption despite active signups" },
+    { stat: "Flat", label: "Expansion revenue from existing user base" },
+  ],
+  problemSentence:
+    "Retention systems were rule-based and disconnected from real user behavior.",
+  approachIntro:
+    "We deployed a modular Retention & Expansion Engine embedded directly into the product.",
+  approachPillars: [
+    {
+      title: "Behavior Tracking",
+      body: "",
+      items: ["Feature usage", "Session depth", "Activity frequency"],
+    },
+    {
+      title: "State Classification",
+      body: "",
+      items: ["New User", "At-Risk", "Power User", "Expansion Ready"],
+    },
+    {
+      title: "Adaptive Modules",
+      body: "",
+      items: ["Feature prompts", "Use-case education", "Upgrade nudges"],
+    },
+  ],
+  diagramSteps: [
+    "User Behavior",
+    "State Classification",
+    "Trigger Condition",
+    "Module Injected",
+    "Behavior Change",
+    "Retention / Expansion Event",
+  ],
+  interventions: [
+    "Behavior-triggered prompts",
+    '"Next best action" system',
+    "Lifecycle-aware UX",
+    "Contextual upgrade nudges",
+  ],
+  metrics: [
+    { label: "Week 4 Retention", from: "28%", to: "44%", delta: "+57%", positive: true },
+    { label: "Feature Adoption", from: "—", to: "+35%", delta: "+35%", positive: true },
+    { label: "Expansion Revenue", from: "—", to: "+18–25%", delta: "+18–25%", positive: true },
+    { label: "Churn Risk", from: "—", to: "−20%", delta: "−20%", positive: true },
+  ],
+  businessImpact: [
+    "Increased LTV",
+    "Monetized existing users",
+    "Reduced reliance on acquisition",
+  ],
+  closingInsight: "Retention is not messaging — it is system design.",
+  ctaTitle: "Deploy a Retention & Expansion Module",
+  ctaSubtext: "Build a behavior-driven retention system in 1–3 weeks.",
+  ctaButton: "Start Deployment",
+};
+
+export const systemLabCaseStudy: FlagshipCaseStudy = {
+  title: "Adaptive Product System (End-to-End)",
+  subtitle: "Adaptive System Lab (Tier 3)",
+  badge: "REFERENCE SYSTEM",
+  tier: "Adaptive System Lab",
+  sector: "Reference Architecture",
+  accentColor: "#F59E0B",
+  problemStats: [
+    { stat: "Static", label: "Products don't adapt to user behavior" },
+    { stat: "Siloed", label: "Disconnected lifecycle stages — onboarding, retention, monetization" },
+    { stat: "Leaky", label: "Lost revenue and inefficient growth from fragmented journeys" },
+  ],
+  problemSentence:
+    "Most products treat every user the same at every stage — and pay for it in lost activation, retention, and expansion.",
+  approachIntro:
+    "We designed a full-stack Adaptive Product System where every interaction feeds a real-time decision engine.",
+  approachPillars: [
+    {
+      title: "Unified Signal Layer",
+      body: "",
+      items: [
+        "Behavioral signals from all product surfaces",
+        "Session events, feature usage, lifecycle stage",
+        "Unified context passed to decision engine",
+      ],
+    },
+    {
+      title: "HADE Decision Engine",
+      body: "",
+      items: [
+        "Real-time routing across all product stages",
+        "Adaptive rules for onboarding, retention, monetization",
+        "Feedback loop for continuous optimization",
+      ],
+    },
+    {
+      title: "Adaptive Experience Layer",
+      body: "",
+      items: [
+        "Onboarding adapts to acquisition source",
+        "Retention modules trigger on inactivity",
+        "Monetization on usage thresholds",
+        "Re-engagement on churn signals",
+      ],
+    },
+  ],
+  diagramSteps: ["Signals", "HADE Decision Engine", "Feedback Loop", "Continuous Optimization"],
+  diagramModules: ["Onboarding", "Retention", "Monetization", "Re-engagement"],
+  interventionsLabel: "Example Behaviors",
+  interventions: [
+    "Onboarding adapts to acquisition source and role",
+    "Retention triggers fire on detected inactivity",
+    "Monetization nudges based on usage thresholds",
+    "Re-engagement activates after churn signals",
+  ],
+  metrics: [
+    { label: "Activation", from: "Baseline", to: "+40–80%", delta: "+40–80%", positive: true },
+    { label: "Retention", from: "Baseline", to: "+30–60%", delta: "+30–60%", positive: true },
+    { label: "Expansion Revenue", from: "Baseline", to: "+20–40%", delta: "+20–40%", positive: true },
+    { label: "System Compounding", from: "—", to: "Continuous", delta: "Ongoing", positive: true },
+  ],
+  businessImpact: [
+    "System-level growth engine — not a one-time fix",
+    "Compounding optimization across every product stage",
+    "Sustainable competitive advantage",
+  ],
+  closingInsight:
+    "This is not a single feature or redesign. It is a system layer that transforms how products make decisions.",
+  ctaTitle: "Build Your Adaptive Product System",
+  ctaSubtext: "Design a full-stack adaptive architecture for your product in 4–8 weeks.",
+  ctaButton: "Discuss System",
+};
 
 export const caseStudies: CaseStudy[] = [
   {

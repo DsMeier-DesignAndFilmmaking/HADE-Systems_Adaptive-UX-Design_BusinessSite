@@ -1,8 +1,3 @@
-"use client";
-
-import { motion } from "framer-motion";
-import { fadeUp, viewport } from "@/branding/motion";
-
 type SectionWrapperProps = {
   children: React.ReactNode;
   id?: string;
@@ -14,13 +9,9 @@ type SectionWrapperProps = {
 
 export function SectionWrapper({ children, id, eyebrow, title, intro, className = "" }: SectionWrapperProps) {
   return (
-    <motion.section
+    <section
       id={id}
       className={`mt-[100px] ${className}`.trim()}
-      variants={fadeUp}
-      initial="hidden"
-      whileInView="visible"
-      viewport={viewport}
     >
       {(eyebrow || title || intro) && (
         <div className="mb-8 max-w-3xl">
@@ -43,6 +34,6 @@ export function SectionWrapper({ children, id, eyebrow, title, intro, className 
         </div>
       )}
       {children}
-    </motion.section>
+    </section>
   );
 }

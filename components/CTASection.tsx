@@ -5,6 +5,7 @@ type CTASectionProps = {
   body: string;
   primaryLabel?: string;
   secondaryLabel?: string;
+  secondaryHref?: string;
 };
 
 export function CTASection({
@@ -12,6 +13,7 @@ export function CTASection({
   body,
   primaryLabel = "Get a Free Breakdown",
   secondaryLabel = "View Services",
+  secondaryHref = "/services",
 }: CTASectionProps) {
   return (
     <section
@@ -43,7 +45,7 @@ export function CTASection({
               {primaryLabel}
             </Link>
             <Link
-              href="/services"
+              href={secondaryHref}
               className="inline-flex items-center justify-center rounded-full px-6 py-3 font-sans text-sm font-semibold text-white/70 transition hover:text-white"
               style={{ border: "0.5px solid rgba(255,255,255,0.15)" }}
             >
