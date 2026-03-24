@@ -795,11 +795,11 @@ const DeliverablesGrid = () => (
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: i * 0.1 }}
-        className="group relative rounded-2xl p-6 overflow-hidden"
+        className="group relative flex h-full flex-col overflow-hidden rounded-2xl p-6"
         style={{ background: THEME.colors.card, border: `1px solid ${THEME.colors.border}` }}
       >
         <div className="absolute -inset-px rounded-2xl bg-gradient-to-br from-teal-500/10 to-indigo-500/10 opacity-0 group-hover:opacity-100 transition duration-500 pointer-events-none" />
-        <div className="relative">
+        <div className="relative flex h-full flex-col">
           <div className="mb-3">{d.icon}</div>
           <h3 className="text-sm font-semibold text-white mb-2">{d.title}</h3>
           <p className="text-xs leading-relaxed text-slate-400">{d.body}</p>

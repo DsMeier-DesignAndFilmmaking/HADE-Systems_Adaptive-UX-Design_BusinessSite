@@ -13,7 +13,7 @@ function HadeMiniDiagram() {
 
   return (
     <div className="glass-panel mx-auto w-full max-w-xs p-6">
-      <p className="mb-5 text-center font-mono text-[10px] uppercase tracking-[0.22em] text-white/70">
+      <p className="mb-5 text-center font-mono text-[10px] uppercase tracking-[0.22em] text-white/100">
         HADE · Live Adaptive System
       </p>
 

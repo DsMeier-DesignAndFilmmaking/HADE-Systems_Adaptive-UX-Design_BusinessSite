@@ -211,7 +211,13 @@ function MetricCell({
 }
 
 /* ─── Main component ─────────────────────────────────────────────── */
-export function FlagshipCaseStudyCard({ study }: { study: FlagshipCaseStudy }) {
+export function FlagshipCaseStudyCard({
+  study,
+  href,
+}: {
+  study: FlagshipCaseStudy;
+  href?: string;
+}) {
   const color = study.accentColor;
 
   return (
@@ -223,7 +229,7 @@ export function FlagshipCaseStudyCard({ study }: { study: FlagshipCaseStudy }) {
       <div className="p-7 md:p-10">
 
         {/* ── Header ─────────────────────────────────────────────── */}
-        <div className="mb-8">
+        <div className="mb-10">
           <div className="flex flex-wrap items-center gap-2 mb-4">
             {study.badge && (
               <span
@@ -257,101 +263,170 @@ export function FlagshipCaseStudyCard({ study }: { study: FlagshipCaseStudy }) {
           </h2>
         </div>
 
-        {/* ── Problem Block ───────────────────────────────────────── */}
-        <section className="mb-8">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-4">
-            The Problem
-          </p>
-          <div
-            className="rounded-xl p-6"
-            style={{
-              background: "rgba(11,13,18,0.03)",
-              border: "1px solid rgba(11,13,18,0.08)",
-            }}
-          >
-            <div className="grid gap-4 sm:grid-cols-3 mb-5">
-              {study.problemStats.map(({ stat, label }) => (
-                <div key={label} className="flex items-start gap-3">
-                  <span
-                    className="text-2xl font-bold font-mono leading-none shrink-0"
-                    style={{ color }}
-                  >
-                    {stat}
-                  </span>
-                  <span className="text-sm text-ink/60 leading-snug pt-0.5">{label}</span>
-                </div>
-              ))}
-            </div>
-            <p className="text-sm text-ink/55 italic border-t border-line/60 pt-4">
-              {study.problemSentence}
-            </p>
-          </div>
-        </section>
+       {/* ── Problem Block ───────────────────────────────────────── */}
+<section className="mb-12">
+  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-4">
+    The Problem
+  </p>
 
-        {/* ── HADE Approach ───────────────────────────────────────── */}
-        <section className="mb-8">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-4">
-            HADE Approach
-          </p>
-          <p className="text-base text-ink/70 leading-relaxed mb-6">{study.approachIntro}</p>
-          <div className="grid gap-4 md:grid-cols-3">
-            {study.approachPillars.map(({ title, body, items }, i) => (
-              <div
-                key={title}
-                className="rounded-xl p-5"
-                style={{
-                  background: hexToRgba(color, 0.04),
-                  border: `1px solid ${hexToRgba(color, 0.14)}`,
-                }}
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <span style={{ color }}>{PILLAR_ICONS[i]}</span>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink/60">
-                    {title}
-                  </p>
-                </div>
-                {items ? (
-                  <ul className="space-y-1.5">
-                    {items.map((item) => (
-                      <li key={item} className="flex items-center gap-2 text-sm text-ink/60">
-                        <span
-                          className="w-1 h-1 rounded-full shrink-0"
-                          style={{ background: color }}
-                        />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-ink/60 leading-relaxed">{body}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
+  <div
+    className="rounded-xl p-6"
+    style={{
+      background: "rgba(11,13,18,0.03)",
+      border: "1px solid rgba(11,13,18,0.08)",
+    }}
+  >
+    {/* Headline (NEW) */}
+    <p className="text-sm text-ink/70 mb-6 max-w-xl leading-relaxed">
+      Travel discovery breaks down in real-world conditions. As context changes, users are forced
+      to continuously reassess decisions without guidance from the system.
+    </p>
 
-        {/* ── System Diagram ──────────────────────────────────────── */}
-        <section className="mb-8">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-4">
-            System Flow
+    {/* Problem Cards */}
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      
+      {/* Card 1 */}
+      <div className="rounded-lg border border-line/60 bg-white/40 p-4 flex flex-col gap-2">
+        <h3 className="text-sm font-semibold text-ink">
+          Static plans break instantly
+        </h3>
+        <p className="text-sm text-ink/60 leading-relaxed">
+          Pre-built itineraries fail as soon as conditions shift — weather, crowds, energy, or
+          unexpected discoveries — with no adaptive response.
+        </p>
+      </div>
+
+      {/* Card 2 */}
+      <div className="rounded-lg border border-line/60 bg-white/40 p-4 flex flex-col gap-2">
+        <h3 className="text-sm font-semibold text-ink">
+          No field awareness
+        </h3>
+        <p className="text-sm text-ink/60 leading-relaxed">
+          Tools are designed for planning, not real-time use — lacking awareness of location, timing,
+          and immediate user context.
+        </p>
+      </div>
+
+      {/* Card 3 */}
+      <div className="rounded-lg border border-line/60 bg-white/40 p-4 flex flex-col gap-2">
+        <h3 className="text-sm font-semibold text-ink">
+          Continuous re-decision fatigue
+        </h3>
+        <p className="text-sm text-ink/60 leading-relaxed">
+          Every change forces users to restart their decision process — with no memory, guidance, or
+          prioritization from the system.
+        </p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+      {/* ── HADE Approach ───────────────────────────────────────── */}
+<section className="mb-10">
+  {/* Section Label */}
+  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-4">
+    HADE Approach
+  </p>
+
+  {/* Intro Paragraph */}
+  <p className="text-base text-ink/70 mb-6 leading-relaxed">
+    {study.approachIntro}
+  </p>
+
+  {/* Pillars Grid */}
+  <div className="grid gap-6 md:grid-cols-3">
+    {study.approachPillars.map(({ title, body, items }, i) => (
+      <div
+        key={title}
+        className="flex flex-col rounded-xl p-5"
+        style={{
+          background: hexToRgba(color, 0.04),
+          border: `1px solid ${hexToRgba(color, 0.14)}`,
+        }}
+      >
+        {/* Pillar Header */}
+        <div className="flex items-center gap-2 mb-4">
+          <span style={{ color }}>{PILLAR_ICONS[i]}</span>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink/60">
+            {title}
           </p>
-          <div
-            className="rounded-xl p-5"
-            style={{
-              background: "rgba(11,13,18,0.02)",
-              border: "1px solid rgba(11,13,18,0.07)",
-            }}
-          >
-            <SystemDiagram
-              steps={study.diagramSteps}
-              color={color}
-              modules={study.diagramModules}
-            />
+        </div>
+
+        {/* Body or Sentence Blocks */}
+        {items ? (
+          <div className="flex flex-col gap-3 mt-1">
+            {items.map((item) => {
+              // Split first few words for bolding
+              const firstWords = item.split(' ').slice(0, 3).join(' ')
+              const rest = item.split(' ').slice(3).join(' ')
+              return (
+                <p key={item} className="text-sm text-ink/60 leading-relaxed">
+                  <span className="font-semibold">{firstWords}</span> {rest}
+                </p>
+              )
+            })}
           </div>
-        </section>
+        ) : (
+          <p className="text-sm text-ink/60 leading-relaxed mt-1">{body}</p>
+        )}
+      </div>
+    ))}
+  </div>
+</section>
+
+       {/* ── System Diagram Hero ─────────────────────────────────────── */}
+<section className="mb-16 relative">
+  {/* Section Label */}
+  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-1">
+    System Flow
+  </p>
+
+  {/* Headline */}
+  <h2 className="text-2xl md:text-3xl font-bold text-ink mb-6 max-w-4xl">
+    HADE Adaptive System in Action
+  </h2>
+
+  {/* Diagram Container */}
+  <div className="relative w-full rounded-3xl p-8 bg-gradient-to-br from-indigo-50 via-white to-purple-50 shadow-xl overflow-visible">
+    {/* Optional floating background layers for depth */}
+    <div className="absolute inset-0 pointer-events-none">
+      <div className="absolute -top-10 -left-10 w-60 h-60 rounded-full bg-indigo-100 opacity-20 blur-3xl"></div>
+      <div className="absolute -bottom-10 -right-20 w-72 h-72 rounded-full bg-purple-200 opacity-20 blur-3xl"></div>
+    </div>
+
+    {/* System Diagram */}
+    <SystemDiagram
+      steps={study.diagramSteps || []} // safe fallback
+      color={color}
+      modules={study.diagramModules || []} // safe fallback
+    />
+  </div>
+
+  {/* Diagram Explanation */}
+  <div className="mt-6 max-w-3xl space-y-4">
+    {(study.diagramModules || []).map((mod) => (
+      <div key={mod} className="flex flex-col md:flex-row gap-3 md:items-start">
+        {/* Dot */}
+        <span
+          className="w-3 h-3 rounded-full shrink-0 mt-1"
+          style={{ background: color }}
+        />
+        {/* Text */}
+        <div>
+          <p className="font-semibold text-ink">{mod}</p>
+          <p className="text-sm text-ink/60 leading-relaxed">
+            {/* Placeholder description; update as you add real module details */}
+            Description of {mod} goes here.
+          </p>
+        </div>
+      </div>
+    ))}
+  </div>
+</section>
 
         {/* ── Key Interventions / Example Behaviors ───────────────── */}
-        <section className="mb-8">
+        <section className="mb-10">
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-4">
             {study.interventionsLabel ?? "Key Interventions"}
           </p>
@@ -376,7 +451,8 @@ export function FlagshipCaseStudyCard({ study }: { study: FlagshipCaseStudy }) {
         </section>
 
         {/* ── Metrics Grid ────────────────────────────────────────── */}
-        <section className="mb-8">
+        <section className="mb-10">
+          <p className="text-xs uppercase tracking-widest text-muted mb-2">Outcome</p>
           <div
             className="rounded-xl overflow-hidden"
             style={{ background: "#09090b", border: `1px solid ${hexToRgba(color, 0.18)}` }}
@@ -404,7 +480,7 @@ export function FlagshipCaseStudyCard({ study }: { study: FlagshipCaseStudy }) {
         </section>
 
         {/* ── Business Impact ─────────────────────────────────────── */}
-        <section className="mb-8">
+        <section className="mb-10">
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-4">
             Business Impact
           </p>
@@ -423,7 +499,7 @@ export function FlagshipCaseStudyCard({ study }: { study: FlagshipCaseStudy }) {
 
         {/* ── Closing Insight ─────────────────────────────────────── */}
         <blockquote
-          className="mb-8 rounded-xl px-6 py-5"
+          className="mb-10 rounded-xl px-6 py-5"
           style={{
             background: hexToRgba(color, 0.05),
             borderLeft: `3px solid ${hexToRgba(color, 0.4)}`,
@@ -447,6 +523,24 @@ export function FlagshipCaseStudyCard({ study }: { study: FlagshipCaseStudy }) {
             {study.ctaButton}
           </Link>
         </div>
+
+        {/* ── View Case Study Button ───────────────────────────────── */}
+        {href && (
+          <div className="mt-6 flex justify-end">
+            <Link
+              href={href}
+              className="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition-all"
+              style={{
+                color,
+                background: hexToRgba(color, 0.08),
+                border: `1px solid ${hexToRgba(color, 0.25)}`,
+              }}
+            >
+              View Full Case Study
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        )}
 
       </div>
     </article>

@@ -55,7 +55,7 @@ function SprintFlowDiagram() {
       >
         <p
           className="font-mono text-[9px] uppercase tracking-[0.2em] mb-1"
-          style={{ color: "rgba(49,107,255,0.7)" }}
+          style={{ color: "rgba(255, 255, 255, 0.7)" }}
         >
           sprint analysis
         </p>
@@ -82,7 +82,7 @@ function SprintFlowDiagram() {
         className="rounded-xl p-3"
         style={{ background: "rgba(255,255,255,0.03)", border: "0.5px solid rgba(255,255,255,0.08)" }}
       >
-        <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-white/30 text-center mb-2.5">
+        <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-white/80 text-center mb-2.5">
           Deliverables
         </p>
         <div className="space-y-1.5">
@@ -108,7 +108,7 @@ function SprintFlowDiagram() {
 /* ─── Metric tile (results section) ─────────────────────────────── */
 function MetricTile({ value, label }: { value: string; label: string }) {
   return (
-    <div className="panel px-4 py-3">
+    <div className="panel flex h-full flex-col px-4 py-3">
       <p className="text-2xl font-bold font-mono leading-none" style={{ color: "#316BFF" }}>
         {value}
       </p>
@@ -199,8 +199,8 @@ export default function AdaptiveUXSprintPage() {
               body: "Without signal-level data, fixes are based on opinion rather than behavioral evidence.",
             },
           ].map(({ icon, title, body }, i) => (
-            <Reveal key={title} delay={i * 80}>
-              <div className="panel p-6">
+            <Reveal key={title} delay={i * 80} className="h-full">
+              <div className="panel flex h-full flex-col p-6">
                 <span
                   className="mb-5 flex h-9 w-9 items-center justify-center rounded-full"
                   style={{
@@ -242,8 +242,8 @@ export default function AdaptiveUXSprintPage() {
               body: "Testable UX solutions — production-ready components and specs, ready for implementation in days.",
             },
           ].map(({ icon, title, body }, i) => (
-            <Reveal key={title} delay={i * 80}>
-              <div className="panel p-6">
+            <Reveal key={title} delay={i * 80} className="h-full">
+              <div className="panel flex h-full flex-col p-6">
                 <span
                   className="mb-5 flex h-9 w-9 items-center justify-center rounded-full"
                   style={{
@@ -305,8 +305,8 @@ export default function AdaptiveUXSprintPage() {
                 ],
               },
             ].map(({ week, title, step, items }, i) => (
-              <Reveal key={step} delay={i * 80}>
-                <div className="panel relative p-6">
+              <Reveal key={step} delay={i * 80} className="h-full">
+                <div className="panel relative flex h-full flex-col p-6">
                   <div className="mb-5 flex items-center justify-between">
                     <p
                       className="font-mono text-3xl font-bold leading-none"
@@ -326,7 +326,7 @@ export default function AdaptiveUXSprintPage() {
                     </span>
                   </div>
                   <h3 className="mb-4 text-lg font-semibold text-ink">{title}</h3>
-                  <ul className="space-y-2">
+                  <ul className="flex-1 space-y-2">
                     {items.map((item) => (
                       <li key={item} className="flex items-start gap-2 text-sm text-ink/60">
                         <span
@@ -355,7 +355,7 @@ export default function AdaptiveUXSprintPage() {
             { value: "+57%", label: "Retention Increase" },
             { value: "+25%", label: "Expansion Revenue" },
           ].map((metric, i) => (
-            <Reveal key={metric.label} delay={i * 80}>
+            <Reveal key={metric.label} delay={i * 80} className="h-full">
               <MetricTile value={metric.value} label={metric.label} />
             </Reveal>
           ))}

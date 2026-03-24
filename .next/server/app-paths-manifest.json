@@ -1,3 +1,10 @@
 {
-  "/case-studies/page": "app/case-studies/page.js"
+  "/page": "app/page.js",
+  "/case-studies/page": "app/case-studies/page.js",
+  "/case-studies/travel/page": "app/case-studies/travel/page.js",
+  "/how-it-works/page": "app/how-it-works/page.js",
+  "/services/page": "app/services/page.js",
+  "/adaptive-ux-sprint/page": "app/adaptive-ux-sprint/page.js",
+  "/contact/page": "app/contact/page.js",
+  "/about/page": "app/about/page.js"
 }

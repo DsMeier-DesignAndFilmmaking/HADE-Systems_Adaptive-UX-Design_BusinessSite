@@ -69,9 +69,9 @@ export function HowHadeWorks() {
       <div className="hidden md:grid md:grid-cols-[1fr_1px_1fr_1px_1fr]">
         {steps.map((step, index) => (
           <Fragment key={`desktop-${step.number}`}>
-            <Reveal delay={index * 80}>
+            <Reveal delay={index * 80} className="h-full">
               <article
-                className={`flex flex-col bg-white/[.92] p-6 backdrop-blur transition-transform duration-300 hover:-translate-y-0.5 ${
+                className={`flex h-full flex-col bg-white/[.92] p-6 backdrop-blur transition-transform duration-300 hover:-translate-y-0.5 ${
                   index === 0 ? "rounded-l-2xl" : index === steps.length - 1 ? "rounded-r-2xl" : ""
                 }`}
                 style={{ border: "0.5px solid rgba(216, 220, 227, 0.75)" }}
