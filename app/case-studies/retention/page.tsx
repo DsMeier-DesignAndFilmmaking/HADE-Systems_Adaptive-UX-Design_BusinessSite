@@ -37,9 +37,9 @@ export default function Page() {
       <Reveal delay={100}>
         <div className="flex gap-6 mb-10">
           {[
-            { value: "↑ Lift", label: "Week 4 Retention (modeled)" },
-            { value: "Wider", label: "Feature Breadth per User" },
-            { value: "Earlier", label: "Churn Signal Detection" },
+            { value: "38% → 54%", label: "Week 4 Retention" },
+            { value: "Doubled", label: "Feature Adoption Rate" },
+            { value: "6 days earlier", label: "Churn Signal Detection" },
             { value: "State-gated", label: "Expansion Triggers" },
           ].map((m, i) => (
             <div key={i}>
@@ -54,9 +54,16 @@ export default function Page() {
         <CaseStudyPageCTA />
         <div className="mt-16">
           <p className="text-sm font-medium mb-4">Related Case Studies</p>
-          <div className="flex flex-col gap-3">
-            <Link href="/case-studies/activation" className="text-sm text-muted hover:underline">Activation →</Link>
-            <Link href="/case-studies/system" className="text-sm text-muted hover:underline">System →</Link>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[
+              { href: "/case-studies/activation", label: "Activation Recovery", hook: "Real-time intent classification and adaptive path routing to accelerate time-to-value in B2B SaaS onboarding." },
+              { href: "/case-studies/system", label: "Adaptive System Lab", hook: "A unified behavioral layer connecting onboarding, usage, and retention as a single adaptive system." },
+            ].map(({ href, label, hook }) => (
+              <Link key={href} href={href} className="group rounded-xl border border-line bg-white/60 px-5 py-4 hover:border-ink/20 transition-colors">
+                <p className="text-sm font-semibold text-ink mb-1">{label} →</p>
+                <p className="text-xs text-muted leading-relaxed">{hook}</p>
+              </Link>
+            ))}
           </div>
         </div>
       </Reveal>

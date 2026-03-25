@@ -1,347 +1,262 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import TravelCaseStudy from "@/src/components/hade/case-studies/TravelCaseStudy";
 import CaseStudyPageCTA from "@/src/components/hade/case-studies/CaseStudyPageCTA";
 import Reveal from "@/src/components/hade/animation/Reveal";
+import CaseStudyHero from "@/components/travel/CaseStudyHero";
+import SplitSystemIntro from "@/components/travel/SplitSystemIntro";
+import PrincipleBlock from "@/components/travel/PrincipleBlock";
+import SystemGrid from "@/components/travel/SystemGrid";
+import BuildFocusList from "@/components/travel/BuildFocusList";
+import FutureProductCTA from "@/components/travel/FutureProductCTA";
 
 export const metadata: Metadata = {
-  title: "Travel Case Study | HADE Systems",
+  title: "Travel Packs | HADE Systems",
   description:
-    "How HADE's real-time adaptive discovery system helps travelers decide what to do next — classifying live context signals to surface the best next move at the right moment.",
+    "An adaptive, offline-first travel system powered by the HADE Decision Engine—designed to help travelers make better decisions in real time without constant phone use.",
 };
+
+const ACCENT = "#0891B2";
+
+const PROBLEMS = [
+  {
+    headline: "Overloaded tools",
+    body: "Apps optimized for planning go silent the moment you're in motion. The tool stops working exactly when you need it most.",
+  },
+  {
+    headline: "Generic recommendations",
+    body: "Same suggestions regardless of context, time, or what you've already done. No memory. No prioritization.",
+  },
+  {
+    headline: "High screen dependency",
+    body: "Finding anything requires active searching, pulling you out of the experience and back into your phone.",
+  },
+  {
+    headline: "Loss of spontaneity",
+    body: "Decision overload leads to paralysis, not exploration. The overhead of deciding kills the desire to move.",
+  },
+];
+
+const SYSTEM_ITEMS = [
+  {
+    tag: "Input Layer",
+    title: "Travel Packs",
+    body: "Structured destination units that embed curated decisions offline—no connectivity required.",
+  },
+  {
+    tag: "Engine Trigger",
+    title: "Moment-Based Prompts",
+    body: "Context-aware suggestions surfaced at the right moment without asking the user to search.",
+  },
+  {
+    tag: "Offline-First",
+    title: "Offline Decision Layer",
+    body: "Full usability without connectivity—all decision logic and content runs entirely on-device.",
+  },
+  {
+    tag: "System Layer",
+    title: "Adaptive Logic",
+    body: "The system evolves based on behavior, location, and environment signals over time.",
+  },
+];
+
+const BUILD_ITEMS = [
+  {
+    label: "Pack Data Model",
+    detail: "Defining what fields, structure, and constraints make a pack functional and portable across destinations.",
+  },
+  {
+    label: "Ultra-Fast Interaction Flows",
+    detail: "Every tap path designed to complete in under 3 interactions—minimizing the cost of each decision.",
+  },
+  {
+    label: "Attention Cost Reduction",
+    detail: "Measuring and minimizing the cognitive load of each decision moment surfaced by the system.",
+  },
+  {
+    label: "Offline-First Architecture",
+    detail: "Ensuring all decision logic and content runs fully on-device without a network dependency.",
+  },
+  {
+    label: "HADE Logic Application",
+    detail: "Applying Decision Engine rules to real travel scenarios and validating output in field conditions.",
+  },
+];
+
+const WHATS_NEXT = [
+  "Launch MVP for first destination",
+  "Field testing in real travel environments",
+  "Refining decision timing and relevance",
+  "Expanding HADE system integration",
+];
 
 export default function Page() {
   return (
     <main className="w-full">
+      <div className="max-w-3xl mx-auto px-4 md:px-6 pt-10 pb-24 md:pb-16">
 
-        {/* ── Hero ──────────────────────────────────────────────────── */}
+        {/* ── Back ──────────────────────────────────────────────────── */}
         <Reveal>
           <Link
             href="/case-studies"
-            className="text-sm text-muted hover:underline mb-6 inline-block"
+            className="text-sm text-muted hover:underline mb-8 inline-block"
           >
             ← Back to Case Studies
           </Link>
-          <div className="mb-10">
-            <p className="text-xs uppercase tracking-widest text-muted mb-2">
-              Case Study
-            </p>
-            <p className="text-xs text-muted mb-2">
-              Adaptive UX Sprint · Travel · Concept Build
-            </p>
-            <h1 className="text-2xl md:text-3xl font-semibold mb-3">
-              Adaptive Trip Discovery System
-            </h1>
-            <p className="text-sm text-muted mb-4 leading-relaxed">
-              Travel tools are built for planning. But travel happens in real time — context shifts constantly, plans break, and decisions need to be made in the field with no guidance. This system redesign introduces a live adaptive layer that reads location, movement, and behavioral signals to surface the best next move at each moment.
-            </p>
-          </div>
         </Reveal>
 
-        {/* ── Directional Signals Strip ─────────────────────────────── */}
-        <Reveal delay={100}>
-          <div className="flex gap-6 mb-10">
-            {[
-              { value: "Live", label: "Context-Aware Response" },
-              { value: "↓ Fewer", label: "Interface Interruptions In Motion" },
-              { value: "Faster", label: "Time at Decision Moment" },
-              { value: "Adapts", label: "When Context Changes" },
-            ].map((m, i) => (
-              <div key={i}>
-                <p className="text-xl font-semibold">{m.value}</p>
-                <p className="text-xs text-muted">{m.label}</p>
-              </div>
-            ))}
-          </div>
+        {/* ── 1. Hero ───────────────────────────────────────────────── */}
+        <Reveal delay={40}>
+          <CaseStudyHero accent={ACCENT} />
         </Reveal>
 
-        {/* ── Problem Section ───────────────────────────────────────── */}
-        <Reveal delay={150}>
-          <div className="mb-10">
+        <div className="border-t border-line mb-12" />
 
-            {/* Section header */}
-            <div className="mb-5">
-              <p
-                className="text-xs font-mono uppercase tracking-[0.2em] mb-2"
-                style={{ color: "#0891B2" }}
-              >
-                The Problem
-              </p>
-              <h2 className="text-xl font-semibold text-ink">
-                Why existing travel tools fail in the field
-              </h2>
-            </div>
+        {/* ── 2. Product + System Framing ───────────────────────────── */}
+        <Reveal delay={80}>
+          <section className="mb-12">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-5">
+              Product + System
+            </p>
+            <SplitSystemIntro
+              accent={ACCENT}
+              left={{
+                label: "What This Is",
+                heading: "A real product in active development",
+                body: "Travel Packs is an actively developed product where the HADE Decision Engine is applied directly to real travel scenarios—shaping how decisions are surfaced, prioritized, and experienced.",
+              }}
+              right={{
+                label: "System Layer",
+                heading: "Powered by HADE Decision Engine",
+                body: "The HADE Decision Engine powers how information is filtered, timed, and delivered—turning complex travel decisions into simple, actionable moments.",
+              }}
+            />
+          </section>
+        </Reveal>
 
-            {/* Problem cards — 1 col mobile · 2 col sm+ */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {[
-                {
-                  index: "01",
-                  headline: "Too many options",
-                  description:
-                    "Users are presented with every available option at once — no prioritization, no context, no signal about what actually fits this moment.",
-                },
-                {
-                  index: "02",
-                  headline: "No real-time awareness",
-                  description:
-                    "Tools don't respond to location, time of day, movement, or energy level. Context changes constantly. The interface doesn't.",
-                },
-                {
-                  index: "03",
-                  headline: "Decisions happen in motion",
-                  description:
-                    "Travelers make decisions continuously — while walking, pausing, changing plans. Not in a single pre-trip planning session.",
-                },
-                {
-                  index: "04",
-                  headline: "Static tools, dynamic reality",
-                  description:
-                    "Current products are built for the night before. They go silent the moment the trip begins.",
-                },
-              ].map(({ index, headline, description }) => (
+        {/* ── 3. Problem ────────────────────────────────────────────── */}
+        <Reveal delay={120}>
+          <section className="mb-12">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-6">
+              Problem
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {PROBLEMS.map(({ headline, body }) => (
                 <div
-                  key={index}
+                  key={headline}
                   className="rounded-xl p-5"
                   style={{
                     background: "rgba(11,13,18,0.03)",
                     border: "1px solid rgba(11,13,18,0.08)",
                   }}
                 >
-                  {/* Index label */}
-                  <p
-                    className="text-[10px] font-mono uppercase tracking-[0.2em] mb-3"
-                    style={{ color: "#0891B2", opacity: 0.7 }}
-                  >
-                    {index}
-                  </p>
-
-                  {/* Headline */}
-                  <h3 className="text-base font-semibold text-ink leading-snug mb-2">
-                    {headline}
-                  </h3>
-
-                  {/* Description */}
-                  <p className="text-sm text-ink/60 leading-relaxed">
-                    {description}
-                  </p>
+                  <h3 className="text-sm font-semibold text-ink mb-2 leading-snug">{headline}</h3>
+                  <p className="text-sm text-ink/60 leading-relaxed">{body}</p>
                 </div>
               ))}
             </div>
-          </div>
+          </section>
         </Reveal>
 
-        {/* ── Core Case Study Card ───────────────────────────────────── */}
+        {/* ── 4. Core Principle ─────────────────────────────────────── */}
+        <Reveal delay={160}>
+          <section className="mb-12">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-5">
+              Core Principle
+            </p>
+            <PrincipleBlock
+              accent={ACCENT}
+              statement="The goal is not to replace spontaneity — it's to enable it."
+              supporting="Travel Packs is built around minimal screen time, fast decisions, and a fast return to the real world. Every design choice reduces the cost of deciding—so more of the trip can be lived."
+            />
+          </section>
+        </Reveal>
+
+        {/* ── 5. System in Action ───────────────────────────────────── */}
         <Reveal delay={200}>
-          <TravelCaseStudy />
+          <section className="mb-12">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-4">
+              System in Action
+            </p>
+            <p className="text-sm text-ink/55 leading-relaxed mb-5">
+              This product is where the HADE Decision Engine is being actively applied.
+            </p>
+            <SystemGrid items={SYSTEM_ITEMS} accent={ACCENT} />
+          </section>
         </Reveal>
 
-        {/* ── Experience Walkthrough ────────────────────────────────── */}
-        <Reveal delay={260}>
-          <div
-            className="mt-10 rounded-2xl px-7 py-8"
-            style={{
-              background: "rgba(8,145,178,0.03)",
-              border: "1px solid rgba(8,145,178,0.12)",
-            }}
-          >
-            <p
-              className="text-xs font-mono uppercase tracking-[0.2em] mb-3"
-              style={{ color: "#0891B2" }}
-            >
-              Experience Walkthrough · Four Moments
+        {/* ── 6. Current Build Focus ────────────────────────────────── */}
+        <Reveal delay={240}>
+          <section className="mb-12">
+            <BuildFocusList items={BUILD_ITEMS} accent={ACCENT} />
+          </section>
+        </Reveal>
+
+        {/* ── 7. What's Next ────────────────────────────────────────── */}
+        <Reveal delay={280}>
+          <section className="mb-12">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-5">
+              What&apos;s Next
             </p>
-            <h2 className="text-lg font-semibold text-ink mb-2">
-              How the System Behaves in the Field
-            </h2>
-            <p className="text-sm text-ink/55 leading-relaxed mb-6 max-w-2xl">
-              The system reads context continuously. These four moments show how state classification changes what the interface does — without any input from the user.
-            </p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {[
-                {
-                  moment: "01 · Walking",
-                  state: "Exploring Area",
-                  what: "User is moving through an unfamiliar neighborhood at a slow pace with no specific intent.",
-                  response: "The system surfaces 3 nearby options clustered by experience type. No search required. No ranked list. Low cognitive load.",
-                },
-                {
-                  moment: "02 · Pausing",
-                  state: "Evaluating Options",
-                  what: "User slows, stops, and opens two restaurant results in quick succession. The system detects proximity and comparison behavior.",
-                  response: "The interface collapses to a side-by-side view of both options. One attribute — current wait time — is foregrounded. Everything else is hidden.",
-                },
-                {
-                  moment: "03 · Moving Again",
-                  state: "In Motion",
-                  what: "User begins walking toward a destination. Velocity and direction signals confirm active transit.",
-                  response: "The interface goes quiet. No new recommendations surface. Navigation is shown. The system holds all suggestions until a stop is detected.",
-                },
-                {
-                  moment: "04 · Choosing",
-                  state: "Decision Moment",
-                  what: "User stops outside a specific venue. High dwell time, repeated view, high proximity — all three signals align.",
-                  response: "One option fills the screen. One action: Walk Here. The system has resolved the decision. The user only needs to confirm.",
-                },
-              ].map(({ moment, state, what, response }) => (
-                <div
-                  key={moment}
-                  className="rounded-xl px-5 py-5"
-                  style={{
-                    background: "rgba(8,145,178,0.05)",
-                    border: "1px solid rgba(8,145,178,0.13)",
-                  }}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <p
-                      className="text-xs font-mono font-semibold uppercase tracking-[0.16em]"
-                      style={{ color: "#0891B2" }}
-                    >
-                      {moment}
-                    </p>
-                    <span
-                      className="text-[10px] font-mono px-2 py-0.5 rounded-full"
-                      style={{
-                        background: "rgba(8,145,178,0.10)",
-                        border: "1px solid rgba(8,145,178,0.22)",
-                        color: "#0891B2",
-                      }}
-                    >
-                      {state}
-                    </span>
-                  </div>
-                  <p className="text-xs text-ink/55 leading-relaxed mb-2">{what}</p>
-                  <p className="text-sm text-ink/80 leading-relaxed font-medium">{response}</p>
+            <div className="space-y-3">
+              {WHATS_NEXT.map((item, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <span className="mt-2 w-1 h-1 rounded-full bg-ink/25 shrink-0" />
+                  <p className="text-sm text-ink/60 leading-relaxed">{item}</p>
                 </div>
               ))}
             </div>
-          </div>
+          </section>
         </Reveal>
 
-        {/* ── Demo Build Placeholder ────────────────────────────────── */}
+        {/* ── 8. Future Product Entry Point ─────────────────────────── */}
         <Reveal delay={320}>
-          <div
-            className="mt-6 rounded-2xl px-7 py-8"
-            style={{
-              background: "rgba(8,145,178,0.04)",
-              border: "1px dashed rgba(8,145,178,0.30)",
-            }}
-          >
-            <p
-              className="text-xs font-mono uppercase tracking-[0.2em] mb-3"
-              style={{ color: "#0891B2" }}
-            >
-              Interactive Demo · In Progress
-            </p>
-            <h2 className="text-lg font-semibold text-ink mb-3">
-              Real-Time Adaptive Travel Interface — 0 → 1 Build
-            </h2>
-            <p className="text-sm text-ink/60 leading-relaxed mb-5 max-w-2xl">
-              A working prototype is in development. The demo will simulate live context changes — movement, location, time of day — and show in real time how the system shifts between states and adapts the interface accordingly. No filter input. No search required.
-            </p>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {[
-                {
-                  label: "Real-Time Adaptive Interface",
-                  detail: "Live state-responsive UI that transitions between Exploring, Evaluating, In Motion, and Decision Moment without user-initiated navigation",
-                },
-                {
-                  label: "Context Simulation System",
-                  detail: "Simulated location, movement velocity, and time-of-day inputs to demonstrate adaptive responses across all four user states",
-                },
-                {
-                  label: "Dynamic UI State Demo",
-                  detail: "Walkthrough of how the interface changes at each moment — from open discovery to single-action decision — with state labels visible",
-                },
-              ].map(({ label, detail }) => (
-                <div
-                  key={label}
-                  className="rounded-xl px-4 py-4"
-                  style={{
-                    background: "rgba(8,145,178,0.06)",
-                    border: "1px solid rgba(8,145,178,0.14)",
-                  }}
-                >
-                  <p className="text-sm font-semibold text-ink mb-1">{label}</p>
-                  <p className="text-xs text-ink/55 leading-relaxed">{detail}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Reveal>
-
-        {/* ── Visual System Placeholder ─────────────────────────────── */}
-        <Reveal delay={380}>
-          <div
-            className="mt-6 rounded-2xl px-7 py-8"
-            style={{
-              background: "rgba(11,13,18,0.02)",
-              border: "1px dashed rgba(11,13,18,0.12)",
-            }}
-          >
-            <p className="text-xs font-mono uppercase tracking-[0.2em] text-ink/35 mb-3">
-              Diagram + System Visuals · Coming Soon
-            </p>
-            <h2 className="text-lg font-semibold text-ink mb-3">
-              System Architecture Visuals
-            </h2>
-            <p className="text-sm text-ink/55 leading-relaxed mb-5 max-w-2xl">
-              The following diagrams are in production and will be added when the concept build is complete.
-            </p>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {[
-                {
-                  label: "Real-Time System Flow",
-                  detail: "Live signal-to-output flow: context detected → signals captured → state classified → engine decision → response surfaced → action taken",
-                },
-                {
-                  label: "Context → Decision Diagram",
-                  detail: "Maps each contextual input (location, velocity, time, behavior) to its corresponding state classification and interface output",
-                },
-                {
-                  label: "State Transition Map",
-                  detail: "Visual representation of all four states — Exploring Area, Evaluating Options, In Motion, Decision Moment — with real-time transition triggers and conditions between each",
-                },
-              ].map(({ label, detail }) => (
-                <div
-                  key={label}
-                  className="rounded-xl px-4 py-4"
-                  style={{
-                    background: "rgba(11,13,18,0.03)",
-                    border: "1px solid rgba(11,13,18,0.08)",
-                  }}
-                >
-                  <p className="text-sm font-semibold text-ink mb-1">{label}</p>
-                  <p className="text-xs text-ink/50 leading-relaxed">{detail}</p>
-                </div>
-              ))}
-            </div>
-          </div>
+          <section className="mb-16">
+            <FutureProductCTA accent={ACCENT} />
+          </section>
         </Reveal>
 
         {/* ── CTA + Related ─────────────────────────────────────────── */}
-        <Reveal delay={440}>
+        <Reveal delay={360}>
           <CaseStudyPageCTA />
           <div className="mt-16">
             <p className="text-sm font-medium mb-4">Related Case Studies</p>
-            <div className="flex flex-col gap-3">
-              <Link href="/case-studies/activation" className="text-sm text-muted hover:underline">
-                Activation →
-              </Link>
-              <Link href="/case-studies/retention" className="text-sm text-muted hover:underline">
-                Retention →
-              </Link>
-              <Link href="/case-studies/ai-tool" className="text-sm text-muted hover:underline">
-                AI Tool →
-              </Link>
-              <Link href="/case-studies/system" className="text-sm text-muted hover:underline">
-                System →
-              </Link>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                {
+                  href: "/case-studies/activation",
+                  label: "Activation Recovery",
+                  hook: "Real-time intent classification that routes B2B SaaS users to the fastest path to their first value moment.",
+                },
+                {
+                  href: "/case-studies/ai-tool",
+                  label: "Adaptive AI Interaction",
+                  hook: "Task-stage classification that replaces the blank slate with structured scaffolding matched to where the user is in their workflow.",
+                },
+                {
+                  href: "/case-studies/retention",
+                  label: "Retention System",
+                  hook: "Behavior-triggered engagement that detects drift and responds before churn occurs.",
+                },
+                {
+                  href: "/case-studies/system",
+                  label: "Adaptive System Lab",
+                  hook: "A unified behavioral layer that connects onboarding, usage, and retention as a single adaptive system.",
+                },
+              ].map(({ href, label, hook }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="group rounded-xl border border-line bg-white/60 px-5 py-4 hover:border-ink/20 transition-colors"
+                >
+                  <p className="text-sm font-semibold text-ink mb-1">{label} →</p>
+                  <p className="text-xs text-muted leading-relaxed">{hook}</p>
+                </Link>
+              ))}
             </div>
           </div>
         </Reveal>
 
-      
+      </div>
     </main>
   );
 }

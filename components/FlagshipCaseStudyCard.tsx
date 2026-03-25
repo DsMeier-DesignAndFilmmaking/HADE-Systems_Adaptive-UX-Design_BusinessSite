@@ -276,48 +276,17 @@ export function FlagshipCaseStudyCard({
       border: "1px solid rgba(11,13,18,0.08)",
     }}
   >
-    {/* Headline (NEW) */}
     <p className="text-sm text-ink/70 mb-6 max-w-xl leading-relaxed">
-      Travel discovery breaks down in real-world conditions. As context changes, users are forced
-      to continuously reassess decisions without guidance from the system.
+      {study.problemSentence}
     </p>
 
-    {/* Problem Cards */}
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      
-      {/* Card 1 */}
-      <div className="rounded-lg border border-line/60 bg-white/40 p-4 flex flex-col gap-2">
-        <h3 className="text-sm font-semibold text-ink">
-          Static plans break instantly
-        </h3>
-        <p className="text-sm text-ink/60 leading-relaxed">
-          Pre-built itineraries fail as soon as conditions shift — weather, crowds, energy, or
-          unexpected discoveries — with no adaptive response.
-        </p>
-      </div>
-
-      {/* Card 2 */}
-      <div className="rounded-lg border border-line/60 bg-white/40 p-4 flex flex-col gap-2">
-        <h3 className="text-sm font-semibold text-ink">
-          No field awareness
-        </h3>
-        <p className="text-sm text-ink/60 leading-relaxed">
-          Tools are designed for planning, not real-time use — lacking awareness of location, timing,
-          and immediate user context.
-        </p>
-      </div>
-
-      {/* Card 3 */}
-      <div className="rounded-lg border border-line/60 bg-white/40 p-4 flex flex-col gap-2">
-        <h3 className="text-sm font-semibold text-ink">
-          Continuous re-decision fatigue
-        </h3>
-        <p className="text-sm text-ink/60 leading-relaxed">
-          Every change forces users to restart their decision process — with no memory, guidance, or
-          prioritization from the system.
-        </p>
-      </div>
-
+      {study.problemStats.map(({ stat, label }) => (
+        <div key={stat} className="rounded-lg border border-line/60 bg-white/40 p-4 flex flex-col gap-2">
+          <h3 className="text-sm font-semibold text-ink">{stat}</h3>
+          <p className="text-sm text-ink/60 leading-relaxed">{label}</p>
+        </div>
+      ))}
     </div>
   </div>
 </section>
@@ -403,26 +372,17 @@ export function FlagshipCaseStudyCard({
     />
   </div>
 
-  {/* Diagram Explanation */}
-  <div className="mt-6 max-w-3xl space-y-4">
-    {(study.diagramModules || []).map((mod) => (
-      <div key={mod} className="flex flex-col md:flex-row gap-3 md:items-start">
-        {/* Dot */}
-        <span
-          className="w-3 h-3 rounded-full shrink-0 mt-1"
-          style={{ background: color }}
-        />
-        {/* Text */}
-        <div>
-          <p className="font-semibold text-ink">{mod}</p>
-          <p className="text-sm text-ink/60 leading-relaxed">
-            {/* Placeholder description; update as you add real module details */}
-            Description of {mod} goes here.
-          </p>
+  {/* Diagram Module Legend */}
+  {(study.diagramModules || []).length > 0 && (
+    <div className="mt-6 max-w-3xl flex flex-wrap gap-3">
+      {(study.diagramModules || []).map((mod) => (
+        <div key={mod} className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
+          <p className="text-sm font-medium text-ink/70">{mod}</p>
         </div>
-      </div>
-    ))}
-  </div>
+      ))}
+    </div>
+  )}
 </section>
 
         {/* ── Key Interventions / Example Behaviors ───────────────── */}
@@ -524,23 +484,6 @@ export function FlagshipCaseStudyCard({
           </Link>
         </div>
 
-        {/* ── View Case Study Button ───────────────────────────────── */}
-        {href && (
-          <div className="mt-6 flex justify-end">
-            <Link
-              href={href}
-              className="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition-all"
-              style={{
-                color,
-                background: hexToRgba(color, 0.08),
-                border: `1px solid ${hexToRgba(color, 0.25)}`,
-              }}
-            >
-              View Full Case Study
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-        )}
 
       </div>
     </article>

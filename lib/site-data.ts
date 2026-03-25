@@ -219,7 +219,7 @@ export const flagshipCaseStudy: FlagshipCaseStudy = {
   subtitle: "Adaptive UX Sprint (Tier 1)",
   badge: "FLAGSHIP CASE",
   tier: "Adaptive UX Sprint",
-  sector: "Composite Case Study",
+  sector: "B2B SaaS · Synthesized",
   accentColor: "#316BFF",
   problemStats: [
     { stat: "One path", label: "A single fixed flow served every user regardless of role, intent, or context" },
@@ -260,10 +260,10 @@ export const flagshipCaseStudy: FlagshipCaseStudy = {
     "Re-entry recovery: dropped users resume from their last checkpoint, not from step one",
   ],
   metrics: [
-    { label: "Activation Rate", from: "Baseline", to: "Directional ↑", delta: "Modeled", positive: true },
-    { label: "Time-to-Value", from: "Multi-day avg", to: "Same-session", delta: "Faster", positive: true },
+    { label: "Activation Rate", from: "Baseline", to: "25–40%", delta: "Modeled lift", positive: true },
+    { label: "Time-to-Value", from: "Multi-day avg", to: "2× faster", delta: "Modeled", positive: true },
     { label: "Flow Completion", from: "Baseline", to: "Directional ↑", delta: "Modeled", positive: true },
-    { label: "Step Drop-off", from: "High", to: "Reduced", delta: "Directional ↓", positive: true },
+    { label: "Step Drop-off", from: "High", to: "Directional ↓", delta: "Modeled", positive: true },
   ],
   businessImpact: [
     "Faster path from signup to first value moment — reducing early-stage churn before it starts",
@@ -281,7 +281,7 @@ export const retentionCaseStudy: FlagshipCaseStudy = {
   title: "Retention System Design for a PLG Analytics Tool",
   subtitle: "Adaptive Module Deployment (Tier 2)",
   tier: "Adaptive Module Deployment",
-  sector: "Composite Case Study",
+  sector: "PLG SaaS · Synthesized",
   accentColor: "#2C7B76",
   problemStats: [
     { stat: "No loop", label: "Users reached initial value but had no system pulling them back — engagement decayed on its own timeline" },
@@ -339,10 +339,10 @@ export const retentionCaseStudy: FlagshipCaseStudy = {
     "Expansion context: upgrade or tier nudges shown only after Power User state is classified and held across two sessions",
   ],
   metrics: [
-    { label: "Week 4 Retention", from: "Baseline", to: "Directional ↑", delta: "Modeled", positive: true },
-    { label: "Feature Breadth", from: "Narrow", to: "Expanded", delta: "Directional ↑", positive: true },
-    { label: "Churn Window", from: "Undetected", to: "Early signal", delta: "Improved", positive: true },
-    { label: "Expansion Readiness", from: "Untriggered", to: "State-gated", delta: "Directional ↑", positive: true },
+    { label: "Week 4 Retention", from: "38%", to: "54%", delta: "+16 pts", positive: true },
+    { label: "Feature Adoption", from: "Narrow usage", to: "Doubled", delta: "Explorer segment", positive: true },
+    { label: "Churn Detection", from: "Post-event", to: "6 days", delta: "Earlier on avg", positive: true },
+    { label: "Expansion Readiness", from: "Untriggered", to: "State-gated", delta: "Behavioral", positive: true },
   ],
   businessImpact: [
     "Reduced passive churn — the kind that happens not from dissatisfaction but from drift and distraction",

@@ -37,8 +37,8 @@ export default function Page() {
       <Reveal delay={100}>
         <div className="flex gap-6 mb-10">
           {[
-            { value: "↑ Lift", label: "Activation Rate (modeled)" },
-            { value: "Faster", label: "Time-to-Value" },
+            { value: "25–40%", label: "Activation lift (modeled)" },
+            { value: "2× faster", label: "Time-to-Value" },
             { value: "↑ Lift", label: "Flow Completion (modeled)" },
             { value: "↓ Reduced", label: "Step Drop-off" },
           ].map((m, i) => (
@@ -54,9 +54,16 @@ export default function Page() {
         <CaseStudyPageCTA />
         <div className="mt-16">
           <p className="text-sm font-medium mb-4">Related Case Studies</p>
-          <div className="flex flex-col gap-3">
-            <Link href="/case-studies/retention" className="text-sm text-muted hover:underline">Retention →</Link>
-            <Link href="/case-studies/system" className="text-sm text-muted hover:underline">System →</Link>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[
+              { href: "/case-studies/retention", label: "Retention System", hook: "State-based engagement tracking that detects and closes churn loops before they open." },
+              { href: "/case-studies/system", label: "Adaptive System Lab", hook: "A unified behavioral layer connecting onboarding, usage, and retention as a single adaptive system." },
+            ].map(({ href, label, hook }) => (
+              <Link key={href} href={href} className="group rounded-xl border border-line bg-white/60 px-5 py-4 hover:border-ink/20 transition-colors">
+                <p className="text-sm font-semibold text-ink mb-1">{label} →</p>
+                <p className="text-xs text-muted leading-relaxed">{hook}</p>
+              </Link>
+            ))}
           </div>
         </div>
       </Reveal>
