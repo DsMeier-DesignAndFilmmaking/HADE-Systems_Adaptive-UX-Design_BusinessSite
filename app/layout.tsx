@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AdaptiveMobileNav } from "@/components/AdaptiveMobileNav";
@@ -42,7 +43,9 @@ export default function RootLayout({
             }
           `}</style>
         </noscript>
-        <ScrollRevealManager />
+        <Suspense fallback={null}>
+          <ScrollRevealManager />
+        </Suspense>
         <div className="grid-overlay min-h-screen">
           <Navbar />
           <AdaptiveMobileNav />
