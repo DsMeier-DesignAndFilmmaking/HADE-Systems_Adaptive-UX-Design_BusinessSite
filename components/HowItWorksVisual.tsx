@@ -547,7 +547,7 @@ const SystemArchitecture = () => {
             className="text-[10px] uppercase tracking-[0.28em] text-teal-500 mb-1"
             style={{ fontFamily: THEME.fonts.mono }}
           >
-            Signal Simulator · Interactive Demo
+            Signal Simulator
           </p>
           <h3 className="text-lg font-semibold text-white">
             How HADE processes context in real time

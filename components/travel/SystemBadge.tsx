@@ -18,7 +18,7 @@ export default function SystemBadge({ accent = "#0891B2" }: SystemBadgeProps) {
         className="w-1.5 h-1.5 rounded-full"
         style={{ background: accent, opacity: 0.7 }}
       />
-      Powered by HADE Decision Engine
+      HADE Integration: In Progress
     </span>
   );
 }

@@ -1,6 +1,5 @@
 {
+  "/page": "app/page.js",
   "/case-studies/page": "app/case-studies/page.js",
-  "/case-studies/travel/page": "app/case-studies/travel/page.js",
-  "/case-studies/activation/page": "app/case-studies/activation/page.js",
-  "/how-it-works/page": "app/how-it-works/page.js"
+  "/case-studies/travel/page": "app/case-studies/travel/page.js"
 }

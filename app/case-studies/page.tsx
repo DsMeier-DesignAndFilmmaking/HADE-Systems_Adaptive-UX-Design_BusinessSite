@@ -13,6 +13,14 @@ export const metadata: Metadata = {
 
 const CASE_STUDIES = [
   {
+    title: "Adaptive Trip Discovery",
+    description:
+      "Travel tools are built for planning. But travel happens in real time — context shifts, plans break, and decisions need to be made in the field. This system reads live location, movement, and behavioral signals to surface the best next move at each moment.",
+    metric: "Outcome: context-aware real-time guidance across four in-field user states",
+    tag: "Travel · Concept Build",
+    href: "/case-studies/travel",
+  },
+  {
     title: "Activation Recovery: Onboarding Redesign for B2B SaaS",
     description:
       "The onboarding flow treated every user identically — ignoring hesitation signals, role context, and intent depth. No decision logic. No adaptive routing. Users hit friction early and never reached the activation moment.",
@@ -35,14 +43,6 @@ const CASE_STUDIES = [
     metric: "Outcome: unified behavioral layer connecting onboarding through retention",
     tag: "System · Adaptive UX Lab",
     href: "/case-studies/system",
-  },
-  {
-    title: "Adaptive Trip Discovery System",
-    description:
-      "Travel tools are built for planning. But travel happens in real time — context shifts, plans break, and decisions need to be made in the field. This system reads live location, movement, and behavioral signals to surface the best next move at each moment.",
-    metric: "Outcome: context-aware real-time guidance across four in-field user states",
-    tag: "Travel · Concept Build",
-    href: "/case-studies/travel",
   },
 ];
 

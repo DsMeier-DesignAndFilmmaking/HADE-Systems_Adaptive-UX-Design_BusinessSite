@@ -12,7 +12,7 @@ import FutureProductCTA from "@/components/travel/FutureProductCTA";
 export const metadata: Metadata = {
   title: "Travel Packs | HADE Systems",
   description:
-    "An adaptive, offline-first travel system powered by the HADE Decision Engine—designed to help travelers make better decisions in real time without constant phone use.",
+    "A real, working offline-first travel system. HADE Decision Engine integration is the next phase — currently in active design.",
 };
 
 const ACCENT = "#0891B2";
@@ -39,54 +39,81 @@ const PROBLEMS = [
 const SYSTEM_ITEMS = [
   {
     tag: "Input Layer",
-    title: "Travel Packs",
-    body: "Structured destination units that embed curated decisions offline—no connectivity required.",
+    title: "Offline-First Core",
+    body: "11 structured city packs with arrival flows, safety data, transit logic, and environmental context — fully usable without connectivity.",
   },
   {
-    tag: "Engine Trigger",
-    title: "Moment-Based Prompts",
-    body: "Context-aware suggestions surfaced at the right moment without asking the user to search.",
+    tag: "Built Module",
+    title: "Arrival Intelligence",
+    body: "Multi-stage tactical guides from pre-arrival through airport exit — time-sensitive decisions pre-loaded and accessible offline.",
   },
   {
-    tag: "Offline-First",
-    title: "Offline Decision Layer",
-    body: "Full usability without connectivity—all decision logic and content runs entirely on-device.",
+    tag: "Built Module",
+    title: "Live City Pulse",
+    body: "Real-time AQI, weather, traffic delay, and pollen data overlaid on city context when online.",
   },
   {
-    tag: "System Layer",
-    title: "Adaptive Logic",
-    body: "The system evolves based on behavior, location, and environment signals over time.",
+    tag: "Integration Point",
+    title: "Spontaneity Engine Slot",
+    body: "A reserved UI component exists in the city guide view. No HADE logic is wired yet — this is the integration target.",
   },
 ];
 
 const BUILD_ITEMS = [
   {
-    label: "Pack Data Model",
-    detail: "Defining what fields, structure, and constraints make a pack functional and portable across destinations.",
+    label: "Defining the HADE Context Contract",
+    detail: "Specifying the exact JSON payload Field Notes will send to HADE: city slug, coordinates, arrival stage, AQI, neighborhood, transit state, and time-of-day.",
   },
   {
-    label: "Ultra-Fast Interaction Flows",
-    detail: "Every tap path designed to complete in under 3 interactions—minimizing the cost of each decision.",
+    label: "Designing the Integration Layer",
+    detail: "Building the API endpoint, context transformer, and UI injection that replace the placeholder component with a live-data connection.",
   },
   {
-    label: "Attention Cost Reduction",
-    detail: "Measuring and minimizing the cognitive load of each decision moment surfaced by the system.",
+    label: "Offline vs. Live Tradeoff",
+    detail: "Deciding whether HADE recommendations are online-only, IDB-cached from last fetch, or pre-generated at pack-download time — each with different UX and architecture implications.",
   },
   {
-    label: "Offline-First Architecture",
-    detail: "Ensuring all decision logic and content runs fully on-device without a network dependency.",
+    label: "Identifying Missing Context",
+    detail: "GPS location, user intent, trip duration, and identity layer are not present in the current system — evaluating what to build vs. accept as v1 constraints.",
   },
   {
-    label: "HADE Logic Application",
-    detail: "Applying Decision Engine rules to real travel scenarios and validating output in field conditions.",
+    label: "GPS + Location UX",
+    detail: "Browser Geolocation opt-in within the city guide — enabling within-city spatial precision for HADE recommendations without requiring a native app.",
   },
 ];
 
+const CURRENT_REALITY = [
+  {
+    headline: "HADE is not yet integrated",
+    body: "The product runs entirely without HADE today. The only HADE-facing element is a static 'Coming Soon' placeholder component with no backend, no API hooks, and no data contract.",
+  },
+  {
+    headline: "The slot exists",
+    body: "SpontaneityEnginePromo.tsx reserves the injection point inside the city guide view. It is the target — not the implementation.",
+  },
+  {
+    headline: "This is the transition phase",
+    body: "The system audit has mapped what Field Notes can provide to HADE and what gaps must be resolved before integration can begin.",
+  },
+];
+
+const SYSTEM_GAPS = [
+  "No real-time GPS — city-level coordinates only; within-city precision requires Geolocation API opt-in",
+  "No user identity — personalization is impossible without an auth or anonymous session layer",
+  "No trip dates or departure context — temporal relevance of recommendations is impaired",
+  "No visited-places tracking — the system has no memory of where the user has already been",
+  "Offline-first vs. live AI — a fundamental tension; HADE requires connectivity, offline users get nothing",
+  "No events or POI data feed — HADE cannot recommend specific venues without a real-time data source",
+  "No user preference profile — no way to know if a user prefers food, culture, or outdoor activity",
+];
+
 const WHATS_NEXT = [
-  "Launch MVP for first destination",
-  "Field testing in real travel environments",
-  "Refining decision timing and relevance",
-  "Expanding HADE system integration",
+  "Define and lock the HADE context contract (input schema)",
+  "Build /api/hade-recommend endpoint or proxy to HADE service",
+  "Replace SpontaneityEnginePromo with a live-data connected component",
+  "Add Geolocation API opt-in for within-city spatial precision",
+  "Implement offline fallback strategy (IDB cache or graceful degradation)",
+  "Field test first HADE integration in a real travel environment",
 ];
 
 export default function Page() {
@@ -120,14 +147,14 @@ export default function Page() {
             <SplitSystemIntro
               accent={ACCENT}
               left={{
-                label: "What This Is",
-                heading: "A real product in active development",
-                body: "Travel Packs is an actively developed product where the HADE Decision Engine is applied directly to real travel scenarios—shaping how decisions are surfaced, prioritized, and experienced.",
+                label: "What Exists Today",
+                heading: "A deployed, working product",
+                body: "Field Notes is a live PWA with 11 city packs, offline-first architecture, arrival intelligence, environmental data, and live city pulse modules. It works without HADE.",
               }}
               right={{
-                label: "System Layer",
-                heading: "Powered by HADE Decision Engine",
-                body: "The HADE Decision Engine powers how information is filtered, timed, and delivered—turning complex travel decisions into simple, actionable moments.",
+                label: "What Comes Next",
+                heading: "HADE integration — in design",
+                body: "The HADE Decision Engine is the next layer. A placeholder slot exists in the product. The API contract, context payload, and offline fallback strategy are being defined now.",
               }}
             />
           </section>
@@ -178,21 +205,62 @@ export default function Page() {
               System in Action
             </p>
             <p className="text-sm text-ink/55 leading-relaxed mb-5">
-              This product is where the HADE Decision Engine is being actively applied.
+              What the product contains today — before HADE integration begins.
             </p>
             <SystemGrid items={SYSTEM_ITEMS} accent={ACCENT} />
           </section>
         </Reveal>
 
-        {/* ── 6. Current Build Focus ────────────────────────────────── */}
+        {/* ── 6. Current Reality ────────────────────────────────────── */}
         <Reveal delay={240}>
+          <section className="mb-12">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-6">
+              Current Reality
+            </p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {CURRENT_REALITY.map(({ headline, body }) => (
+                <div
+                  key={headline}
+                  className="rounded-xl p-5"
+                  style={{
+                    background: "rgba(11,13,18,0.03)",
+                    border: "1px solid rgba(11,13,18,0.08)",
+                  }}
+                >
+                  <h3 className="text-sm font-semibold text-ink mb-2 leading-snug">{headline}</h3>
+                  <p className="text-sm text-ink/60 leading-relaxed">{body}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </Reveal>
+
+        {/* ── 7. Current Build Focus ────────────────────────────────── */}
+        <Reveal delay={280}>
           <section className="mb-12">
             <BuildFocusList items={BUILD_ITEMS} accent={ACCENT} />
           </section>
         </Reveal>
 
-        {/* ── 7. What's Next ────────────────────────────────────────── */}
-        <Reveal delay={280}>
+        {/* ── 8. Gaps Identified ────────────────────────────────────── */}
+        <Reveal delay={310}>
+          <section className="mb-12">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-5">
+              Gaps Identified
+            </p>
+            <div className="space-y-3">
+              {SYSTEM_GAPS.map((gap, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <span className="mt-2 w-1 h-1 rounded-full bg-ink/25 shrink-0" />
+                  <p className="text-sm text-ink/60 leading-relaxed">{gap}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </Reveal>
+
+        {/* ── 9. What's Next ────────────────────────────────────────── */}
+        <Reveal delay={340}>
           <section className="mb-12">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-5">
               What&apos;s Next
@@ -208,15 +276,15 @@ export default function Page() {
           </section>
         </Reveal>
 
-        {/* ── 8. Future Product Entry Point ─────────────────────────── */}
-        <Reveal delay={320}>
+        {/* ── 10. Future Product Entry Point ────────────────────────── */}
+        <Reveal delay={370}>
           <section className="mb-16">
             <FutureProductCTA accent={ACCENT} />
           </section>
         </Reveal>
 
         {/* ── CTA + Related ─────────────────────────────────────────── */}
-        <Reveal delay={360}>
+        <Reveal delay={400}>
           <CaseStudyPageCTA />
           <div className="mt-16">
             <p className="text-sm font-medium mb-4">Related Case Studies</p>

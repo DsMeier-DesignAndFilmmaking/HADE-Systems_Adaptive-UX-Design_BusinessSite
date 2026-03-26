@@ -33,8 +33,8 @@ export default function CaseStudyHero({ accent = "#0891B2" }: CaseStudyHeroProps
 
       {/* Subtitle */}
       <p className="text-base text-ink/65 leading-relaxed mb-5">
-        An adaptive, offline-first travel system powered by the HADE Decision Engine—designed to
-        help travelers make better decisions in real time without constant phone use.
+        A real, working offline-first travel system. The HADE Decision Engine is the next
+        layer — currently in integration design.
       </p>
 
       {/* System badge */}

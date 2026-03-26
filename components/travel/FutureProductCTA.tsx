@@ -10,11 +10,11 @@ interface FutureProductCTAProps {
 }
 
 export default function FutureProductCTA({
-  heading = "Live Product",
-  description = "This is an actively developed product. A working version of Travel Packs will be available here.",
-  subtext = "Designed for quick decisions—so you can stay present while exploring.",
-  buttonLabel = "Travel Packs Prototype",
-  accent = "#316BFF", // Updated to match your HADE brand blue
+  heading = "Field Notes — Working Now",
+  description = "The offline-first PWA is deployed and functional. The HADE integration layer is what gets built next — turning content delivery into real-time decision support.",
+  subtext = "11 city packs. Arrival intelligence. Live environmental data. No HADE yet.",
+  buttonLabel = "View Live Product",
+  accent = "#316BFF",
 }: FutureProductCTAProps) {
   return (
     <div
@@ -31,7 +31,7 @@ export default function FutureProductCTA({
             className="text-[10px] font-mono uppercase tracking-[0.2em] mb-3"
             style={{ color: accent }}
           >
-            Live Prototype · Active
+            Live Product · HADE Integration Pending
           </p>
           <h2 className="text-base font-semibold text-ink mb-2">{heading}</h2>
           <p className="text-sm text-ink/55 leading-relaxed mb-2">{description}</p>

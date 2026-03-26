@@ -431,7 +431,7 @@ export const systemLabCaseStudy: FlagshipCaseStudy = {
 };
 
 export const travelCaseStudy: FlagshipCaseStudy = {
-  title: "Adaptive Trip Discovery System",
+  title: "Adaptive Trip Discovery",
   subtitle: "Helping Travelers Decide What to Do Next — in Real Time",
   badge: "APPLIED CONCEPT",
   tier: "Adaptive UX Sprint",

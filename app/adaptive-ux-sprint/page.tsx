@@ -346,14 +346,14 @@ export default function AdaptiveUXSprintPage() {
 
       {/* ── 5. Results ──────────────────────────────────────────────── */}
       <SectionWrapper
-        eyebrow="Proven Results"
-        title="Results Delivered Across B2B SaaS Products"
+        eyebrow="Results Driven"
+        title="Goal KPIs HADE is designed to move"
       >
         <div className="grid grid-cols-3 gap-3 max-w-md">
           {[
-            { value: "+81%", label: "Activation Lift" },
-            { value: "+57%", label: "Retention Increase" },
-            { value: "+25%", label: "Expansion Revenue" },
+            { value: "+20–35%", label: "Activation Lift" },
+            { value: "2–3×", label: "Retention Increase" },
+            { value: "30–45%", label: "Expansion Revenue" },
           ].map((metric, i) => (
             <Reveal key={metric.label} delay={i * 80} className="h-full">
               <MetricTile value={metric.value} label={metric.label} />
@@ -368,7 +368,7 @@ export default function AdaptiveUXSprintPage() {
       {/* ── 6. Ideal Clients ────────────────────────────────────────── */}
       <SectionWrapper
         eyebrow="Who This Is For"
-        title="Built for Product Teams Ready to Move"
+        title="Built for teams moving beyond static interfaces toward agentic orchestration"
       >
         <div className="grid gap-8 md:grid-cols-2 max-w-3xl">
           <div>

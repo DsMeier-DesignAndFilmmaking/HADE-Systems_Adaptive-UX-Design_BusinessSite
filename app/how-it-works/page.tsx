@@ -25,11 +25,11 @@ export default function HowItWorksPage() {
       </div>
 
       <div className="mt-16">
-        <CTASection
-          title="Need a partner to operationalize adaptive UX quickly?"
-          body="Use the contact form to share your current funnel and goal metrics. You will get a recommended entry point and clear next actions."
-        />
-      </div>
+      <CTASection
+        title="Need a partner to operationalize adaptive UX&nbsp;quickly?"
+        body="Use the contact form to share your current funnel and goal metrics. You will get a recommended entry point and clear next&nbsp;actions."
+      />
+    </div>
     </>
   );
 }
