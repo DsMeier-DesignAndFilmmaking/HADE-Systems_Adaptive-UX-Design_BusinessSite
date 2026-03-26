@@ -4,6 +4,7 @@ import "./globals.css";
 import { AdaptiveMobileNav } from "@/components/AdaptiveMobileNav";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
+import { ScrollRevealManager } from "@/components/ScrollRevealManager";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", preload: false });
 const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains", preload: false });
@@ -29,6 +30,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} ${jetbrainsMono.variable} font-sans`}>
+        <ScrollRevealManager />
         <div className="grid-overlay min-h-screen">
           <Navbar />
           <AdaptiveMobileNav />

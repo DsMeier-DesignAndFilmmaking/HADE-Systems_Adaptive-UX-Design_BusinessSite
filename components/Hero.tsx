@@ -44,7 +44,7 @@ export function Hero() {
           */}
           <Reveal delay={140}>
             <p className="mt-5 max-w-xl text-base leading-relaxed text-ink/60 md:text-lg">
-              HADE builds the adaptive layer between your product and your users: a
+              HADE designs and builds the adaptive layer between your product and your users: a
               live system that maps real behavior, makes routing decisions in real
               time, and gets measurably better with every experiment cycle.
             </p>
