@@ -1,517 +1,210 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { hexToRgba } from "./utils";
 
-interface HadeEngineSystemsDiagramProps {
-  accent?: string;
-}
+/* --- 1. Types & State --- */
+type StepId = "input" | "processing" | "result";
 
-type StepId = 1 | 2 | 3 | 4;
-type ModuleContext = "arrival-intelligence" | "live-city-pulse";
-
-type SignalState = {
-  textSignal: string;
-  voiceSignal: string;
-  moduleContext: ModuleContext;
+interface SignalState {
+  combinedSignal: string;
+  moduleContext: string;
   location: string;
-};
-
-type Candidate = {
-  id: string;
-  title: string;
-  detail: string;
-  score: number;
-};
-
-const STEP_COPY: Record<StepId, string> = {
-  1: "Input your context signals",
-  2: "HADE examines module & location context",
-  3: "Decision Engine scores recommendation candidates",
-  4: "Adaptive Panel surfaces live recommendation",
-};
+}
 
 const DEFAULT_SIGNAL: SignalState = {
-  textSignal: "",
-  voiceSignal: "",
+  combinedSignal: "",
   moduleContext: "arrival-intelligence",
-  location: "",
+  location: "Lower Manhattan, NY",
 };
 
-function clamp(value: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, value));
-}
-
-function percent(value: number) {
-  return `${Math.round(value * 100)}%`;
-}
-
-function buildDecisionMetrics(signal: SignalState) {
-  const textLen = signal.textSignal.trim().length;
-  const voiceLen = signal.voiceSignal.trim().length;
-  const hasLocation = signal.location.trim().length > 3;
-
-  const combined = `${signal.textSignal} ${signal.voiceSignal}`.toLowerCase();
-  const intentKeywordCount = ["food", "indoor", "station", "transit", "park", "crowd"].filter((token) =>
-    combined.includes(token)
-  ).length;
-
-  const contextFreshness = clamp((hasLocation ? 0.7 : 0.46) + textLen * 0.002, 0.38, 0.94);
-  const intentStrength = clamp(0.42 + textLen * 0.003 + voiceLen * 0.002 + intentKeywordCount * 0.06, 0.35, 0.95);
-  const moduleFit = clamp(signal.moduleContext === "arrival-intelligence" ? 0.84 : 0.76, 0.52, 0.95);
-
-  const baseCandidates = [
-    {
-      id: "c1",
-      title: "Low-crowd food near transit",
-      detail: "Optimized for short walking distance and low queue risk.",
-      base: 0.58,
-    },
-    {
-      id: "c2",
-      title: "Indoor activity with short transfer",
-      detail: "Weather-safe recommendation tuned for reduced travel friction.",
-      base: 0.56,
-    },
-    {
-      id: "c3",
-      title: "Local community activity",
-      detail: "High-serendipity option surfaced from local behavioral signals.",
-      base: 0.52,
-    },
-  ];
-
-  const candidates: Candidate[] = baseCandidates
-    .map((item, index) => {
-      const moduleBonus =
-        signal.moduleContext === "arrival-intelligence" ? (index === 0 ? 0.08 : index === 1 ? 0.06 : 0.02) : index === 2 ? 0.08 : 0.04;
-      const score = clamp(
-        item.base + contextFreshness * 0.22 + intentStrength * 0.26 + moduleFit * 0.18 + moduleBonus,
-        0,
-        0.99
-      );
-      return {
-        id: item.id,
-        title: item.title,
-        detail: item.detail,
-        score,
-      };
-    })
-    .sort((a, b) => b.score - a.score);
-
-  return { contextFreshness, intentStrength, moduleFit, candidates };
-}
-
-type StepShellProps = {
-  accent: string;
-  eyebrow: string;
-  title: string;
-  description: string;
-  children: React.ReactNode;
+const hexToRgba = (hex: string, alpha: number) => {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
-function StepShell({ accent, eyebrow, title, description, children }: StepShellProps) {
+/* --- 2. Step Components --- */
+
+function UnifiedInputStep({ accent, signal, setSignal, onNext }: any) {
   return (
-    <div
-      className="rounded-3xl p-5 md:p-7"
-      style={{
-        background: "linear-gradient(180deg, rgba(255,255,255,0.95), rgba(249,250,252,0.95))",
-        border: "1px solid rgba(11,13,18,0.08)",
-      }}
-    >
-      <p className="text-[10px] font-semibold uppercase tracking-[0.2em]" style={{ color: accent }}>
-        {eyebrow}
-      </p>
-      <h3 className="mt-2 text-xl font-semibold text-ink">{title}</h3>
-      <p className="mt-1 text-sm text-ink/60">{description}</p>
-      <div className="mt-5">{children}</div>
+    <div className="relative flex min-h-[600px] flex-col overflow-hidden rounded-[2.5rem] border border-white/40 bg-white/70 p-8 backdrop-blur-2xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.12)] md:p-12">
+      <div className="flex-1">
+        <div className="flex items-center gap-2">
+          <div className="h-1.5 w-1.5 rounded-full" style={{ background: accent }} />
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-40">Intelligence Input</span>
+        </div>
+        <h3 className="mt-4 text-3xl font-semibold tracking-tight text-ink">Listen & Anchor</h3>
+        <p className="mt-2 text-sm leading-relaxed text-ink/50 md:max-w-xs">Describe your vibe and verify your city coordinates.</p>
+
+        <div className="mt-10 space-y-6">
+          <textarea
+            value={signal.combinedSignal}
+            onChange={(e) => setSignal((p: any) => ({ ...p, combinedSignal: e.target.value }))}
+            rows={4}
+            placeholder="e.g. 'I'm exhausted and need a quiet coffee near the station'..."
+            className="w-full resize-none rounded-[1.5rem] border-none bg-ink/[0.03] p-6 text-lg tracking-tight text-ink placeholder:text-ink/20 outline-none transition-all focus:bg-ink/[0.05]"
+          />
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border border-ink/5 bg-white p-4">
+              <label className="block text-[9px] font-bold uppercase tracking-widest text-ink/30">System Module</label>
+              <select value={signal.moduleContext} onChange={(e) => setSignal((p: any) => ({ ...p, moduleContext: e.target.value }))} className="mt-1 w-full bg-transparent text-sm font-medium outline-none cursor-pointer">
+                <option value="arrival-intelligence">Arrival Intelligence</option>
+                <option value="live-city-pulse">Live City Pulse</option>
+              </select>
+            </div>
+            <div className="rounded-2xl border border-ink/5 bg-white p-4">
+              <label className="block text-[9px] font-bold uppercase tracking-widest text-ink/30">GPS Anchor</label>
+              <input value={signal.location} onChange={(e) => setSignal((p: any) => ({ ...p, location: e.target.value }))} className="mt-1 w-full bg-transparent text-sm font-medium outline-none" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8 flex items-center justify-end border-t border-ink/5 pt-8">
+        <button
+          onClick={onNext}
+          className="rounded-full px-10 py-4 text-[11px] font-bold uppercase tracking-[0.15em] text-white shadow-xl transition-all hover:scale-[1.03] active:scale-[0.97]"
+          style={{ background: accent, boxShadow: `0 12px 28px ${hexToRgba(accent, 0.4)}` }}
+        >
+          Score City Scenarios →
+        </button>
+      </div>
     </div>
   );
 }
 
-type SignalInputStepProps = {
-  accent: string;
-  signal: SignalState;
-  setSignal: React.Dispatch<React.SetStateAction<SignalState>>;
-  onNext: () => void;
-};
-
-export function SignalInputStep({ accent, signal, setSignal, onNext }: SignalInputStepProps) {
-  return (
-    <StepShell
-      accent={accent}
-      eyebrow="Step 1"
-      title="User Signal Input Layer"
-      description="Provide user-generated context from text and voice in one unified input panel."
-    >
-      <div className="space-y-4">
-        <div>
-          <label className="text-xs font-semibold uppercase tracking-[0.14em] text-ink/55">Text signal</label>
-          <textarea
-            value={signal.textSignal}
-            onChange={(event) => setSignal((prev) => ({ ...prev, textSignal: event.target.value }))}
-            rows={3}
-            placeholder="Looking for low-crowd food spots near the station."
-            className="mt-2 w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-ink/30"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-semibold uppercase tracking-[0.14em] text-ink/55">Voice signal placeholder</label>
-          <textarea
-            value={signal.voiceSignal}
-            onChange={(event) => setSignal((prev) => ({ ...prev, voiceSignal: event.target.value }))}
-            rows={3}
-            placeholder="Find nearby indoor activity with short transit time."
-            className="mt-2 w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-ink/30"
-          />
-        </div>
-        <button
-          type="button"
-          onClick={onNext}
-          className="inline-flex items-center rounded-full px-5 py-2.5 text-sm font-semibold text-white"
-          style={{ background: accent }}
-        >
-          Submit Signal →
-        </button>
-      </div>
-    </StepShell>
-  );
-}
-
-type BehindTheHoodStepProps = {
-  accent: string;
-  signal: SignalState;
-  setSignal: React.Dispatch<React.SetStateAction<SignalState>>;
-  onNext: () => void;
-};
-
-export function BehindTheHoodStep({ accent, signal, setSignal, onNext }: BehindTheHoodStepProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  return (
-    <StepShell
-      accent={accent}
-      eyebrow="Step 2"
-      title="Behind the Hood / Module + Location"
-      description="Reveal context controls that HADE uses before decision scoring."
-    >
-      <div className="space-y-4">
-        <button
-          type="button"
-          onClick={() => setIsExpanded((state) => !state)}
-          className="inline-flex items-center rounded-full border border-line bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-ink/60 hover:text-ink"
-        >
-          Behind the Hood
-        </button>
-
-        <AnimatePresence initial={false}>
-          {isExpanded && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.22 }}
-              className="rounded-2xl border border-line bg-white p-4"
-            >
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-[0.14em] text-ink/55">Module selector</label>
-                  <select
-                    value={signal.moduleContext}
-                    onChange={(event) =>
-                      setSignal((prev) => ({
-                        ...prev,
-                        moduleContext: event.target.value as ModuleContext,
-                      }))
-                    }
-                    className="mt-2 w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none transition focus:border-ink/30"
-                  >
-                    <option value="arrival-intelligence">Arrival Intelligence</option>
-                    <option value="live-city-pulse">Live City Pulse</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-[0.14em] text-ink/55">
-                    Location / GPS context
-                  </label>
-                  <input
-                    value={signal.location}
-                    onChange={(event) => setSignal((prev) => ({ ...prev, location: event.target.value }))}
-                    placeholder="37.7858,-122.4064 or neighborhood slug"
-                    className="mt-2 w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none transition focus:border-ink/30"
-                  />
-                </div>
-              </div>
-              <p className="mt-4 text-sm text-ink/60">Signals weighted by trust and intent.</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <button
-          type="button"
-          onClick={onNext}
-          className="inline-flex items-center rounded-full px-5 py-2.5 text-sm font-semibold text-white"
-          style={{ background: accent }}
-        >
-          Run HADE →
-        </button>
-      </div>
-    </StepShell>
-  );
-}
-
-type DecisionEngineStepProps = {
-  accent: string;
-  signal: SignalState;
-  runToken: number;
-  onNext: () => void;
-};
-
-export function DecisionEngineStep({ accent, signal, runToken, onNext }: DecisionEngineStepProps) {
-  const { contextFreshness, intentStrength, moduleFit, candidates } = useMemo(
-    () => buildDecisionMetrics(signal),
-    [signal, runToken]
-  );
+function ProcessingStep({ accent, onComplete }: any) {
+  useEffect(() => {
+    const timer = setTimeout(onComplete, 3200);
+    return () => clearTimeout(timer);
+  }, [onComplete]);
 
   const metrics = [
-    { label: "Context freshness", value: contextFreshness },
-    { label: "Intent strength", value: intentStrength },
-    { label: "Module fit", value: moduleFit },
+    { label: "Transit Friction", value: 88 },
+    { label: "Atmospheric Match", value: 94 },
+    { label: "Crowd Density", value: 42 }
   ];
 
   return (
-    <StepShell
-      accent={accent}
-      eyebrow="Step 3"
-      title="HADE Decision Engine"
-      description="Candidate recommendations are scored from context freshness, intent strength, and module fit."
-    >
-      <div className="space-y-4">
-        <div className="rounded-2xl border border-line bg-white p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink/50 mb-3">Scoring model (mock)</p>
-          <div className="space-y-3">
-            {metrics.map((metric) => (
-              <div key={metric.label}>
-                <div className="mb-1 flex items-center justify-between text-xs text-ink/55">
-                  <span>{metric.label}</span>
-                  <span>{percent(metric.value)}</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-ink/10">
-                  <motion.div
-                    key={`${metric.label}-${runToken}`}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${metric.value * 100}%` }}
-                    transition={{ duration: 0.38, ease: "easeOut" }}
-                    className="h-1.5 rounded-full"
-                    style={{ background: accent }}
-                  />
-                </div>
+    <div className="flex min-h-[600px] flex-col items-center justify-center rounded-[2.5rem] bg-white/70 p-12 backdrop-blur-2xl shadow-xl">
+      <div className="w-full max-w-sm space-y-8">
+        <div className="text-center">
+          <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }} className="mx-auto mb-6 h-10 w-10 rounded-full border-2 border-ink/5 border-t-ink" />
+          <h3 className="text-2xl font-semibold">HADE is deciding...</h3>
+          <p className="text-sm text-ink/40 mt-2">Weighting 400+ live data points</p>
+        </div>
+        <div className="space-y-4">
+          {metrics.map((m, i) => (
+            <div key={i} className="space-y-2">
+              <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-ink/40">
+                <span>{m.label}</span>
+                <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.5 }}>{m.value}%</motion.span>
               </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-line bg-white p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink/50 mb-3">Ranked candidates</p>
-          <div className="space-y-2">
-            {candidates.map((candidate, index) => (
-              <motion.div
-                key={`${candidate.id}-${runToken}`}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.06, duration: 0.24 }}
-                className="rounded-xl border border-line/80 bg-white px-3 py-2.5"
-              >
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-ink">{candidate.title}</p>
-                  <span className="text-xs text-ink/55">{percent(candidate.score)}</span>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={onNext}
-          className="inline-flex items-center rounded-full px-5 py-2.5 text-sm font-semibold text-white"
-          style={{ background: accent }}
-        >
-          View Adaptive Panel →
-        </button>
-      </div>
-    </StepShell>
-  );
-}
-
-type AdaptivePanelStepProps = {
-  accent: string;
-  signal: SignalState;
-  runToken: number;
-  onRestart: () => void;
-};
-
-export function AdaptivePanelStep({ accent, signal, runToken, onRestart }: AdaptivePanelStepProps) {
-  const topCandidate = useMemo(() => buildDecisionMetrics(signal).candidates[0], [signal, runToken]);
-
-  return (
-    <StepShell
-      accent={accent}
-      eyebrow="Step 4"
-      title="Adaptive Recommendation Slot"
-      description="Final recommendation panel updates dynamically from the submitted signal context."
-    >
-      <div className="space-y-4">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={`${topCandidate.id}-${runToken}`}
-            initial={{ opacity: 0, y: 8, scale: 0.99 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.99 }}
-            transition={{ duration: 0.24 }}
-            className="rounded-2xl border border-line bg-white p-4"
-          >
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink/45 mb-2">
-              Field Notes Adaptive Slot
-            </p>
-            <h4 className="text-sm font-semibold text-ink">{topCandidate.title}</h4>
-            <p className="mt-1 text-sm text-ink/60">{topCandidate.detail}</p>
-            <div
-              className="mt-3 rounded-xl px-3 py-2.5"
-              style={{
-                background: hexToRgba(accent, 0.06),
-                border: `1px solid ${hexToRgba(accent, 0.2)}`,
-              }}
-            >
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] mb-1" style={{ color: accent }}>
-                Mock user-generated recommendation
-              </p>
-              <p className="text-sm text-ink/75">Local volleyball game near the park. Visitors welcome to join!</p>
+              <div className="h-1 w-full bg-ink/5 rounded-full overflow-hidden">
+                <motion.div initial={{ width: 0 }} animate={{ width: `${m.value}%` }} transition={{ duration: 1.5, delay: i * 0.3, ease: "circOut" }} className="h-full" style={{ background: accent }} />
+              </div>
             </div>
-          </motion.div>
-        </AnimatePresence>
-
-        <p className="text-sm text-ink/60">
-          This panel adapts based on submitted text/voice signals, selected module, and location context.
-        </p>
-
-        <button
-          type="button"
-          onClick={onRestart}
-          className="inline-flex items-center rounded-full px-5 py-2.5 text-sm font-semibold text-white"
-          style={{ background: accent }}
-        >
-          Restart Flow
-        </button>
-      </div>
-    </StepShell>
-  );
-}
-
-type StepControllerProps = {
-  accent: string;
-};
-
-export function StepController({ accent }: StepControllerProps) {
-  const [activeStep, setActiveStep] = useState<StepId>(1);
-  const [runToken, setRunToken] = useState(1);
-  const [signal, setSignal] = useState<SignalState>(DEFAULT_SIGNAL);
-
-  const stepTitle = STEP_COPY[activeStep];
-
-  return (
-    <div
-      className="rounded-3xl p-5 md:p-6"
-      style={{
-        background: "linear-gradient(180deg, rgba(255,255,255,0.92), rgba(247,249,252,0.92))",
-        border: "1px solid rgba(11,13,18,0.08)",
-      }}
-    >
-      <div className="mb-5">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em]" style={{ color: accent }}>
-          Run Mock Cycle / Signal Flow
-        </p>
-        <p className="mt-1 text-sm text-ink/60">{stepTitle}</p>
-        <div className="mt-4 grid grid-cols-4 gap-2">
-          {([1, 2, 3, 4] as StepId[]).map((step) => {
-            const isActive = step === activeStep;
-            const isComplete = step < activeStep;
-            return (
-              <div
-                key={step}
-                className="rounded-full px-3 py-1.5 text-center text-[11px] font-semibold uppercase tracking-[0.14em]"
-                style={{
-                  background: isActive
-                    ? hexToRgba(accent, 0.14)
-                    : isComplete
-                      ? "rgba(11,13,18,0.08)"
-                      : "rgba(11,13,18,0.04)",
-                  border: `1px solid ${isActive ? hexToRgba(accent, 0.35) : "rgba(11,13,18,0.1)"}`,
-                  color: isActive ? accent : "rgba(11,13,18,0.52)",
-                }}
-              >
-                Step {step}
-              </div>
-            );
-          })}
+          ))}
         </div>
       </div>
-
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeStep}
-          initial={{ opacity: 0, x: 18, scale: 0.992 }}
-          animate={{ opacity: 1, x: 0, scale: 1 }}
-          exit={{ opacity: 0, x: -14, scale: 0.992 }}
-          transition={{ duration: 0.24, ease: "easeOut" }}
-        >
-          {activeStep === 1 && (
-            <SignalInputStep
-              accent={accent}
-              signal={signal}
-              setSignal={setSignal}
-              onNext={() => setActiveStep(2)}
-            />
-          )}
-          {activeStep === 2 && (
-            <BehindTheHoodStep
-              accent={accent}
-              signal={signal}
-              setSignal={setSignal}
-              onNext={() => {
-                setRunToken((value) => value + 1);
-                setActiveStep(3);
-              }}
-            />
-          )}
-          {activeStep === 3 && (
-            <DecisionEngineStep
-              accent={accent}
-              signal={signal}
-              runToken={runToken}
-              onNext={() => setActiveStep(4)}
-            />
-          )}
-          {activeStep === 4 && (
-            <AdaptivePanelStep
-              accent={accent}
-              signal={signal}
-              runToken={runToken}
-              onRestart={() => {
-                setSignal(DEFAULT_SIGNAL);
-                setRunToken((value) => value + 1);
-                setActiveStep(1);
-              }}
-            />
-          )}
-        </motion.div>
-      </AnimatePresence>
     </div>
   );
 }
 
-export default function HadeEngineSystemsDiagram({ accent = "#0891B2" }: HadeEngineSystemsDiagramProps) {
-  return <StepController accent={accent} />;
+function ResultStep({ accent, onRestart }: any) {
+  return (
+    <div className="flex min-h-[600px] flex-col overflow-hidden rounded-[2.5rem] bg-ink p-8 text-white shadow-2xl md:p-12">
+      <div className="flex-1">
+        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}>
+          <div className="flex items-center gap-2 mb-8">
+            <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">Verified Context</span>
+          </div>
+          <h4 className="text-4xl font-bold tracking-tight leading-tight">The Loft @ North Station</h4>
+          <p className="mt-6 text-xl text-white/60 leading-relaxed font-light">
+            Found a hidden lounge 3 minutes away. It currently has <span className="text-white font-medium">high seating availability</span> and ambient noise under 50dB.
+          </p>
+          <div className="mt-10 flex gap-3">
+            <div className="rounded-2xl bg-white/10 px-6 py-3 text-[11px] font-bold uppercase tracking-widest">3min Walk</div>
+            <div className="rounded-2xl bg-white/10 px-6 py-3 text-[11px] font-bold uppercase tracking-widest">Quiet Zone</div>
+          </div>
+        </motion.div>
+      </div>
+      <div className="mt-8 border-t border-white/10 pt-8 flex justify-between items-center">
+        <button onClick={onRestart} className="text-[11px] font-bold uppercase tracking-widest text-white/30 hover:text-white transition">
+          Restart Journey
+        </button>
+        <span className="text-[9px] font-bold tracking-widest text-white/20 uppercase">Output: Slot_01_Adaptive</span>
+      </div>
+    </div>
+  );
 }
 
+/* --- 3. Main Controller with Site-Matching Container --- */
+
+/* --- Main Controller with Edge-to-Edge Horizontal Alignment --- */
+
+export default function HadeEngineSystemsDiagram({ accent = "#000000" }: { accent?: string }) {
+  const [step, setStep] = useState<StepId>("input");
+  const [signal, setSignal] = useState<SignalState>(DEFAULT_SIGNAL);
+
+  return (
+    /* OUTER SECTION: No horizontal padding */
+    <section className="w-full py-12 md:py-24">
+      {/* CONTAINER: Set to max-w-7xl to match your page's content edge. 
+         Removed px-6 for edge-to-edge alignment. 
+      */}
+      <div className="mx-auto max-w-7xl w-full">
+        
+        {/* INNER WRAPPER: Forced to 100% width with no max-width constraints */}
+        <div className="w-full">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={step}
+              initial={{ opacity: 0, scale: 0.99 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.01 }}
+              transition={{ duration: 0.5, ease: [0.19, 1, 0.22, 1] }}
+              className="w-full"
+            >
+              {step === "input" && (
+                <UnifiedInputStep 
+                  accent={accent} 
+                  signal={signal} 
+                  setSignal={setSignal} 
+                  onNext={() => setStep("processing")} 
+                />
+              )}
+              {step === "processing" && (
+                <ProcessingStep 
+                  accent={accent} 
+                  onComplete={() => setStep("result")} 
+                />
+              )}
+              {step === "result" && (
+                <ResultStep 
+                  accent={accent} 
+                  onRestart={() => { setStep("input"); setSignal(DEFAULT_SIGNAL); }} 
+                />
+              )}
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Pagination Indicators - Vertical spacing maintained */}
+          <div className="mt-10 flex justify-center gap-2">
+            {(["input", "processing", "result"] as StepId[]).map((s) => (
+              <div 
+                key={s} 
+                className={`h-1 rounded-full transition-all duration-500 ${step === s ? 'w-10' : 'w-2 bg-ink/10'}`} 
+                style={{ backgroundColor: step === s ? accent : undefined }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}

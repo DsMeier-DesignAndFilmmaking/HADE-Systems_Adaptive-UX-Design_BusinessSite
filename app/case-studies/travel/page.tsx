@@ -85,7 +85,7 @@ const BUILD_ITEMS = [
 
 const CURRENT_REALITY = [
   {
-    headline: "Field Notes modules are live and stable",
+    headline: "Field Notes modules are live but being tested",
     body: "Offline-first core, Arrival Intelligence, and Live City Pulse are usable today and define the baseline traveler experience.",
   },
   {
