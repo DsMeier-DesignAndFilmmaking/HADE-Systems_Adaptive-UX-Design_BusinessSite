@@ -1,127 +1,308 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
-const REVEAL_TARGET_SELECTOR = "[data-reveal], .load-into-view";
+const REVEAL_TARGET_SELECTOR = "[data-reveal], .load-into-view, .reveal";
 const BOT_USER_AGENT_REGEX =
   /bot|crawl|spider|slurp|bingpreview|facebookexternalhit|linkedinbot|mediapartners-google|adsbot-google|duckduckbot|yandexbot|baiduspider/i;
+const DEBUG_SCROLL_ANIMATIONS = false;
 
-let observer: IntersectionObserver | null = null;
-let failSafeTimer: number | null = null;
+let intersectionObserver: IntersectionObserver | null = null;
+let mainMutationObserver: MutationObserver | null = null;
+let mainWatchObserver: MutationObserver | null = null;
+let observedMainElement: HTMLElement | null = null;
 
-function teardownScrollAnimations() {
-  if (observer) {
-    observer.disconnect();
-    observer = null;
+let domReadyHandler: (() => void) | null = null;
+let rafA: number | null = null;
+let rafB: number | null = null;
+let mutationMountTimer: number | null = null;
+let engineEpoch = 0;
+
+let observedTargets: WeakSet<HTMLElement> = new WeakSet();
+const failSafeTimers = new Map<HTMLElement, number>();
+
+function debugLog(message: string, element?: HTMLElement) {
+  if (!DEBUG_SCROLL_ANIMATIONS) return;
+  if (element) {
+    console.log(`[ScrollReveal] ${message}`, element);
+    return;
+  }
+  console.log(`[ScrollReveal] ${message}`);
+}
+
+function clearFrameQueue() {
+  if (rafA !== null) {
+    window.cancelAnimationFrame(rafA);
+    rafA = null;
   }
 
-  if (failSafeTimer !== null) {
-    window.clearTimeout(failSafeTimer);
-    failSafeTimer = null;
+  if (rafB !== null) {
+    window.cancelAnimationFrame(rafB);
+    rafB = null;
   }
 }
 
-function revealElement(element: HTMLElement, immediate = false) {
-  if (immediate) {
-    element.style.transitionDelay = "0ms";
+function clearDomReadyListener() {
+  if (!domReadyHandler) return;
+  document.removeEventListener("DOMContentLoaded", domReadyHandler);
+  domReadyHandler = null;
+}
+
+function clearMutationMountTimer() {
+  if (mutationMountTimer !== null) {
+    window.clearTimeout(mutationMountTimer);
+    mutationMountTimer = null;
+  }
+}
+
+function clearFailSafe(element: HTMLElement) {
+  const timer = failSafeTimers.get(element);
+  if (timer === undefined) return;
+  window.clearTimeout(timer);
+  failSafeTimers.delete(element);
+}
+
+function clearAllFailSafes() {
+  failSafeTimers.forEach((timer) => window.clearTimeout(timer));
+  failSafeTimers.clear();
+}
+
+function parseDelayToMs(rawDelay: string | undefined) {
+  if (!rawDelay) return 0;
+
+  const value = rawDelay.trim();
+  if (value.length === 0) return 0;
+
+  if (value.endsWith("ms")) {
+    const parsed = Number.parseFloat(value.replace("ms", ""));
+    return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+  }
+
+  if (value.endsWith("s")) {
+    const parsed = Number.parseFloat(value.replace("s", ""));
+    return Number.isFinite(parsed) ? Math.max(0, parsed * 1000) : 0;
+  }
+
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+}
+
+function setElementDelay(element: HTMLElement) {
+  const inlineDelay = element.style.getPropertyValue("--entry-delay") || undefined;
+  const rawDelay = element.dataset.revealDelay ?? inlineDelay;
+  const delay = parseDelayToMs(rawDelay);
+  element.style.setProperty("--entry-delay", `${delay}ms`);
+}
+
+function resetElementDelay(element: HTMLElement) {
+  element.style.setProperty("--entry-delay", "0ms");
+}
+
+function shouldBypassAnimations() {
+  const isBot = BOT_USER_AGENT_REGEX.test(navigator.userAgent);
+  const allowsMotion = window.matchMedia("(prefers-reduced-motion: no-preference)").matches;
+  return isBot || !allowsMotion || typeof IntersectionObserver === "undefined";
+}
+
+function isElementInViewport(element: HTMLElement) {
+  const rect = element.getBoundingClientRect();
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+  return rect.top <= viewportHeight - 50 && rect.bottom >= 0;
+}
+
+function revealElement(
+  element: HTMLElement,
+  source: "observer" | "immediate" | "bypass" | "fail-safe"
+) {
+  if (source === "bypass" || source === "fail-safe") {
+    resetElementDelay(element);
   }
 
   element.classList.remove("reveal-init");
   element.classList.add("reveal-in");
+  clearFailSafe(element);
+  intersectionObserver?.unobserve(element);
+
+  if (source === "observer") {
+    debugLog("Element entered viewport", element);
+  }
 }
 
-function shouldBypassAnimations() {
-  const prefersMotion = window.matchMedia("(prefers-reduced-motion: no-preference)").matches;
-  const isBot = BOT_USER_AGENT_REGEX.test(navigator.userAgent);
-
-  return isBot || !prefersMotion || typeof IntersectionObserver === "undefined";
+function armFailSafe(element: HTMLElement) {
+  clearFailSafe(element);
+  const timer = window.setTimeout(() => {
+    revealElement(element, "fail-safe");
+  }, 3000);
+  failSafeTimers.set(element, timer);
 }
 
-export function initScrollAnimations() {
-  teardownScrollAnimations();
+function collectTargets(root: ParentNode) {
+  return Array.from(root.querySelectorAll<HTMLElement>(REVEAL_TARGET_SELECTOR));
+}
 
-  const targets = Array.from(document.querySelectorAll<HTMLElement>(REVEAL_TARGET_SELECTOR));
-  if (targets.length === 0) {
-    document.documentElement.classList.remove("reveal-enabled");
+function watchTarget(element: HTMLElement, bypassAnimations: boolean) {
+  element.classList.add("animate-trigger");
+  setElementDelay(element);
+
+  if (element.classList.contains("reveal-in")) return;
+
+  if (bypassAnimations) {
+    revealElement(element, "bypass");
     return;
   }
 
-  if (shouldBypassAnimations()) {
-    document.documentElement.classList.remove("reveal-enabled");
-    targets.forEach((element) => revealElement(element, true));
+  if (isElementInViewport(element)) {
+    revealElement(element, "immediate");
     return;
   }
 
-  const pending = new Set<HTMLElement>();
-  const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+  if (observedTargets.has(element)) return;
 
-  observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (!entry.isIntersecting) return;
+  element.classList.add("reveal-init");
+  observedTargets.add(element);
+  intersectionObserver?.observe(element);
+  armFailSafe(element);
+}
 
-        const element = entry.target as HTMLElement;
-        revealElement(element);
-        pending.delete(element);
-        observer?.unobserve(element);
-      });
-    },
-    {
-      threshold: 0.12,
-      rootMargin: "0px 0px -10% 0px",
-    }
-  );
+export function mountAnimations() {
+  if (typeof window === "undefined") return;
 
-  targets.forEach((element) => {
-    const delay = Number(element.dataset.revealDelay ?? "0");
-    element.style.transitionDelay = Number.isFinite(delay) ? `${Math.max(0, delay)}ms` : "0ms";
+  document.body.classList.add("js-enabled");
+  const bypassAnimations = shouldBypassAnimations();
+  document.documentElement.classList.toggle("reveal-enabled", !bypassAnimations);
 
-    if (element.classList.contains("reveal-in")) return;
+  collectTargets(document).forEach((element) => {
+    watchTarget(element, bypassAnimations);
+  });
+}
 
-    const rect = element.getBoundingClientRect();
-    const isInViewport = rect.top < viewportHeight * 0.95 && rect.bottom > 0;
-    if (isInViewport) {
-      revealElement(element);
-      return;
-    }
+function queueMountAnimations(reason: string, token: number) {
+  clearFrameQueue();
+  rafA = window.requestAnimationFrame(() => {
+    rafB = window.requestAnimationFrame(() => {
+      if (token !== engineEpoch) return;
+      mountAnimations();
+      debugLog(`mountAnimations(${reason})`);
+    });
+  });
+}
 
-    element.classList.add("reveal-init");
-    pending.add(element);
-    observer?.observe(element);
+function scheduleMutationMount(reason: string, token: number) {
+  clearMutationMountTimer();
+  mutationMountTimer = window.setTimeout(() => {
+    queueMountAnimations(reason, token);
+  }, 40);
+}
+
+function bindMainMutationObserver(token: number) {
+  const nextMain = document.querySelector("main");
+  const mainElement = nextMain instanceof HTMLElement ? nextMain : null;
+
+  if (mainElement === observedMainElement) return;
+
+  observedMainElement = mainElement;
+  mainMutationObserver?.disconnect();
+  mainMutationObserver = null;
+
+  if (!mainElement) return;
+
+  mainMutationObserver = new MutationObserver(() => {
+    scheduleMutationMount("main-mutation", token);
   });
 
-  document.documentElement.classList.add("reveal-enabled");
+  mainMutationObserver.observe(mainElement, {
+    childList: true,
+    subtree: true,
+  });
+}
 
-  failSafeTimer = window.setTimeout(() => {
-    pending.forEach((element) => {
-      revealElement(element, true);
-      observer?.unobserve(element);
-    });
-    pending.clear();
-    teardownScrollAnimations();
-  }, 3000);
+function setupObservers(token: number) {
+  if (typeof IntersectionObserver !== "undefined") {
+    intersectionObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          revealElement(entry.target as HTMLElement, "observer");
+        });
+      },
+      {
+        rootMargin: "0px 0px -50px 0px",
+        threshold: 0.05,
+      }
+    );
+  }
+
+  bindMainMutationObserver(token);
+
+  mainWatchObserver = new MutationObserver(() => {
+    bindMainMutationObserver(token);
+    scheduleMutationMount("main-layout-change", token);
+  });
+
+  mainWatchObserver.observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
+}
+
+function runReadyLifecycle() {
+  const token = engineEpoch;
+
+  domReadyHandler = () => {
+    if (token !== engineEpoch) return;
+    queueMountAnimations("dom-content-loaded", token);
+  };
+
+  document.addEventListener("DOMContentLoaded", domReadyHandler, { once: true });
+
+  if (document.readyState === "interactive" || document.readyState === "complete") {
+    domReadyHandler();
+  }
+}
+
+function teardown() {
+  engineEpoch += 1;
+
+  clearFrameQueue();
+  clearMutationMountTimer();
+  clearDomReadyListener();
+  clearAllFailSafes();
+
+  observedTargets = new WeakSet();
+  observedMainElement = null;
+
+  intersectionObserver?.disconnect();
+  intersectionObserver = null;
+
+  mainMutationObserver?.disconnect();
+  mainMutationObserver = null;
+
+  mainWatchObserver?.disconnect();
+  mainWatchObserver = null;
+}
+
+function start() {
+  teardown();
+  const token = engineEpoch;
+
+  setupObservers(token);
+  runReadyLifecycle();
+  queueMountAnimations("route-sync", token);
 }
 
 export function ScrollRevealManager() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const searchKey = searchParams?.toString() ?? "";
 
   useEffect(() => {
-    let rafA = 0;
-    let rafB = 0;
-
-    rafA = window.requestAnimationFrame(() => {
-      rafB = window.requestAnimationFrame(() => {
-        initScrollAnimations();
-      });
-    });
-
+    start();
     return () => {
-      window.cancelAnimationFrame(rafA);
-      window.cancelAnimationFrame(rafB);
-      teardownScrollAnimations();
+      teardown();
     };
-  }, [pathname]);
+  }, [pathname, searchKey]);
 
   return null;
 }
+

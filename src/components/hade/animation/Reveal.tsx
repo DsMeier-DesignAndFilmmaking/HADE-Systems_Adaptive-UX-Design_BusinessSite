@@ -12,7 +12,7 @@ export default function Reveal({
   className = "",
 }: RevealProps) {
   return (
-    <div data-reveal data-reveal-delay={delay} className={`reveal-init ${className}`.trim()}>
+    <div data-reveal data-reveal-delay={delay} className={`animate-trigger reveal reveal-init ${className}`.trim()}>
       {children}
     </div>
   );

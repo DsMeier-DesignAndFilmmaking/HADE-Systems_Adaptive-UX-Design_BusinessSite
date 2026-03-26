@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function HowItWorksPage() {
   return (
     <>
-      <section className="pt-6 md:pt-10">
+      <section className="reveal pt-6 md:pt-10">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">How It Works</p>
         <h1 className="mt-4 max-w-4xl text-4xl font-semibold leading-tight text-ink md:text-5xl">
           A practical system for turning behavior data into conversion gains.
@@ -20,16 +20,16 @@ export default function HowItWorksPage() {
         </p>
       </section>
 
-      <div className="mt-16">
+      <div className="reveal mt-16">
         <HowItWorksVisual />
       </div>
 
-      <div className="mt-16">
-      <CTASection
-        title="Need a partner to operationalize adaptive UX&nbsp;quickly?"
-        body="Use the contact form to share your current funnel and goal metrics. You will get a recommended entry point and clear next&nbsp;actions."
-      />
-    </div>
+      <div className="reveal mt-16">
+        <CTASection
+          title="Need a partner to operationalize adaptive UX&nbsp;quickly?"
+          body="Use the contact form to share your current funnel and goal metrics. You will get a recommended entry point and clear next&nbsp;actions."
+        />
+      </div>
     </>
   );
 }

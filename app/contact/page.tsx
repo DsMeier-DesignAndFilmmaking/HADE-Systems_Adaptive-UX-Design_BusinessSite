@@ -34,22 +34,24 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
 
   return (
     <section className="pt-6 md:pt-10">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Contact</p>
-      <h1 className="mt-4 max-w-4xl text-4xl font-semibold leading-tight text-ink md:text-5xl">
-        I&apos;ll send you 2-3 specific opportunities to improve your product.
-      </h1>
-      <p className="mt-6 max-w-3xl text-lg leading-relaxed text-ink/75">
-        Share your product link, current goals, and where you suspect users are dropping off. You&apos;ll receive a focused breakdown with practical next steps.
-      </p>
+      <div className="reveal">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Contact</p>
+        <h1 className="mt-4 max-w-4xl text-4xl font-semibold leading-tight text-ink md:text-5xl">
+          I&apos;ll send you 2-3 specific opportunities to improve your product.
+        </h1>
+        <p className="mt-6 max-w-3xl text-lg leading-relaxed text-ink/75">
+          Share your product link, current goals, and where you suspect users are dropping off. You&apos;ll receive a focused breakdown with practical next steps.
+        </p>
 
-      {isSubmitted && (
-        <div className="mt-6 rounded-xl border border-accent/30 bg-accentSoft p-4 text-sm font-medium text-ink/85">
-          Request received. You will get your focused breakdown within 1 business day.
-        </div>
-      )}
+        {isSubmitted && (
+          <div className="mt-6 rounded-xl border border-accent/30 bg-accentSoft p-4 text-sm font-medium text-ink/85">
+            Request received. You will get your focused breakdown within 1 business day.
+          </div>
+        )}
+      </div>
 
       <div className="mt-[72px] grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <form className="panel space-y-5 p-7 md:p-8" action={requestBreakdown}>
+        <form className="reveal panel space-y-5 p-7 md:p-8" action={requestBreakdown}>
           <div>
             <label htmlFor="name" className="text-sm font-medium text-ink/80">
               Name
@@ -110,7 +112,7 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
           <p className="text-xs text-ink/60">Response target: within 1 business day.</p>
         </form>
 
-        <aside className="panel p-7 md:p-8">
+        <aside className="reveal panel p-7 md:p-8">
           <h2 className="text-2xl font-semibold text-ink">What happens next</h2>
           <div className="mt-5 space-y-4">
             {[

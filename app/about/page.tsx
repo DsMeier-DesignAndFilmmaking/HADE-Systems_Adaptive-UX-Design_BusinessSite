@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <>
-      <section className="pt-6 md:pt-10">
+      <section className="reveal pt-6 md:pt-10">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">About HADE Systems</p>
         <h1 className="mt-4 max-w-4xl text-4xl font-semibold leading-tight text-ink md:text-5xl">
           Built for teams that need UX to perform like a system.
@@ -20,7 +20,11 @@ export default function AboutPage() {
         </p>
       </section>
 
-      <SectionWrapper title="What we believe" intro="Growth does not come from prettier screens. It comes from interfaces that respond to real user context.">
+      <SectionWrapper
+        className="reveal"
+        title="What we believe"
+        intro="Growth does not come from prettier screens. It comes from interfaces that respond to real user context."
+      >
         <div className="grid gap-4 md:grid-cols-3">
           {[
             {
@@ -44,7 +48,11 @@ export default function AboutPage() {
         </div>
       </SectionWrapper>
 
-      <SectionWrapper title="Who this is for" intro="HADE engagements are best for teams with active product usage and clear growth goals.">
+      <SectionWrapper
+        className="reveal"
+        title="Who this is for"
+        intro="HADE engagements are best for teams with active product usage and clear growth goals."
+      >
         <div className="panel p-6 md:p-8">
           <div className="grid gap-4 md:grid-cols-2">
             {[
@@ -61,10 +69,12 @@ export default function AboutPage() {
         </div>
       </SectionWrapper>
 
-      <CTASection
-        title="If your product feels static, we should talk"
-        body="Share your product and goals. You will get an objective assessment and a practical plan to introduce adaptive UX where it will matter most."
-      />
+      <div className="reveal">
+        <CTASection
+          title="If your product feels static, we should talk"
+          body="Share your product and goals. You will get an objective assessment and a practical plan to introduce adaptive UX where it will matter most."
+        />
+      </div>
     </>
   );
 }

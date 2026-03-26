@@ -30,6 +30,18 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} ${jetbrainsMono.variable} font-sans`}>
+        <noscript>
+          <style>{`
+            .reveal,
+            .load-into-view,
+            .reveal-init,
+            .reveal-in {
+              opacity: 1 !important;
+              transform: none !important;
+              transition: none !important;
+            }
+          `}</style>
+        </noscript>
         <ScrollRevealManager />
         <div className="grid-overlay min-h-screen">
           <Navbar />
