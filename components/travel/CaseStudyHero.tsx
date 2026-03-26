@@ -28,13 +28,13 @@ export default function CaseStudyHero({ accent = "#0891B2" }: CaseStudyHeroProps
 
       {/* Title */}
       <h1 className="text-3xl md:text-4xl font-semibold text-ink leading-snug mb-4">
-        Travel Packs
+        Field Notes + HADE Engine
       </h1>
 
       {/* Subtitle */}
       <p className="text-base text-ink/65 leading-relaxed mb-5">
-        A real, working offline-first travel system. The HADE Decision Engine is the next
-        layer — currently in integration design.
+        A UX-focused travel system where user-generated signals (text + voice) feed adaptive
+        panels and real-time decisioning inside Field Notes.
       </p>
 
       {/* System badge */}
@@ -42,16 +42,19 @@ export default function CaseStudyHero({ accent = "#0891B2" }: CaseStudyHeroProps
         <SystemBadge accent={accent} />
       </div>
 
-      <Link 
-  href="https://downloadable-travel-packs.vercel.app/"
-  target="_blank" 
-  rel="noopener noreferrer"
-  className="inline-block group"
->
-  <p className="text-sm text-ink/80 mt-3 transition-colors group-hover:text-[#316BFF]">
-    Live product coming soon. <span className="underline decoration-ink/20 group-hover:decoration-[#316BFF]">Prototype in active development.</span>
-  </p>
-</Link>
+      <Link
+        href="https://downloadable-travel-packs.vercel.app/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-block group"
+      >
+        <p className="text-sm text-ink/80 mt-3 transition-colors group-hover:text-[#316BFF]">
+          Live product coming soon.{" "}
+          <span className="underline decoration-ink/20 group-hover:decoration-[#316BFF]">
+            Prototype in active development.
+          </span>
+        </p>
+      </Link>
     </div>
   );
 }

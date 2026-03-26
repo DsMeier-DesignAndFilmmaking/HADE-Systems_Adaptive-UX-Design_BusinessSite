@@ -1,1 +1,5 @@
-{"node":{"40a07e5e188c9b750408503c03fda5e2f7735a55a7":{"workers":{"app/contact/page":{"moduleId":"3315","async":false}},"layer":{"app/contact/page":"rsc"},"filename":"app/contact/page.tsx","exportedName":"$$RSC_SERVER_ACTION_0"}},"edge":{},"encryptionKey":"RuF2JO1f0qw92coRIVn5Y4JnXuWfIXvVnf43fMByriE="}
+{
+  "node": {},
+  "edge": {},
+  "encryptionKey": "RuF2JO1f0qw92coRIVn5Y4JnXuWfIXvVnf43fMByriE="
+}

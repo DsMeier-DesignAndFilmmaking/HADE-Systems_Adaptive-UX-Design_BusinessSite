@@ -8,112 +8,113 @@ import PrincipleBlock from "@/components/travel/PrincipleBlock";
 import SystemGrid from "@/components/travel/SystemGrid";
 import BuildFocusList from "@/components/travel/BuildFocusList";
 import FutureProductCTA from "@/components/travel/FutureProductCTA";
+import HadeEngineSystemsDiagram from "@/components/travel/HadeEngineSystemsDiagram";
 
 export const metadata: Metadata = {
   title: "Travel Packs | HADE Systems",
   description:
-    "A real, working offline-first travel system. HADE Decision Engine integration is the next phase — currently in active design.",
+    "UX-focused Field Notes case study showing how HADE Engine turns text + voice user signals into adaptive panels and real-time travel decisions.",
 };
 
 const ACCENT = "#0891B2";
 
 const PROBLEMS = [
   {
-    headline: "Overloaded tools",
-    body: "Apps optimized for planning go silent the moment you're in motion. The tool stops working exactly when you need it most.",
+    headline: "Static interfaces during dynamic travel moments",
+    body: "Most travel products remain locked to pre-planned content and do not adapt once user intent shifts in real time.",
   },
   {
-    headline: "Generic recommendations",
-    body: "Same suggestions regardless of context, time, or what you've already done. No memory. No prioritization.",
+    headline: "Low-fidelity intent capture",
+    body: "Traveler context is often reduced to taps and page views, missing high-value user-generated text and voice signals.",
   },
   {
-    headline: "High screen dependency",
-    body: "Finding anything requires active searching, pulling you out of the experience and back into your phone.",
+    headline: "Recommendation slots without decision logic",
+    body: "UI containers exist, but without trust-weighted signal ingestion and scoring, suggestions stay generic and low-confidence.",
   },
   {
-    headline: "Loss of spontaneity",
-    body: "Decision overload leads to paralysis, not exploration. The overhead of deciding kills the desire to move.",
+    headline: "No live adaptation in motion",
+    body: "When weather, transit, or user preference changes, panels do not re-rank quickly enough to support on-the-go decisions.",
   },
 ];
 
 const SYSTEM_ITEMS = [
   {
-    tag: "Input Layer",
+    tag: "Field Notes Module",
     title: "Offline-First Core",
-    body: "11 structured city packs with arrival flows, safety data, transit logic, and environmental context — fully usable without connectivity.",
+    body: "Foundational city packs and guidance remain available without connectivity to keep baseline utility resilient.",
   },
   {
-    tag: "Built Module",
+    tag: "Field Notes Module",
     title: "Arrival Intelligence",
-    body: "Multi-stage tactical guides from pre-arrival through airport exit — time-sensitive decisions pre-loaded and accessible offline.",
+    body: "Time-sensitive arrival flows provide tactical next actions from landing through initial city movement.",
   },
   {
-    tag: "Built Module",
+    tag: "Field Notes Module",
     title: "Live City Pulse",
-    body: "Real-time AQI, weather, traffic delay, and pollen data overlaid on city context when online.",
+    body: "Live AQI, weather, and city-state context enriches recommendations when connectivity is available.",
   },
   {
-    tag: "Integration Point",
-    title: "Spontaneity Engine Slot",
-    body: "A reserved UI component exists in the city guide view. No HADE logic is wired yet — this is the integration target.",
+    tag: "HADE Integration Point",
+    title: "Adaptive Recommendation Slot",
+    body: "Dedicated UI slot in Field Notes where HADE-scored recommendations are injected and continuously re-ranked.",
   },
 ];
 
 const BUILD_ITEMS = [
   {
-    label: "Defining the HADE Context Contract",
-    detail: "Specifying the exact JSON payload Field Notes will send to HADE: city slug, coordinates, arrival stage, AQI, neighborhood, transit state, and time-of-day.",
+    label: "User-Generated Signal Capture (Text + Voice)",
+    detail: "Define how traveler text notes and voice snippets are captured, normalized, and prepared for inference.",
   },
   {
-    label: "Designing the Integration Layer",
-    detail: "Building the API endpoint, context transformer, and UI injection that replace the placeholder component with a live-data connection.",
+    label: "Signal Ingestion + Trust/Intent Weighting",
+    detail: "Implement a weighting layer that scores reliability, urgency, and intent confidence before decision scoring.",
   },
   {
-    label: "Offline vs. Live Tradeoff",
-    detail: "Deciding whether HADE recommendations are online-only, IDB-cached from last fetch, or pre-generated at pack-download time — each with different UX and architecture implications.",
+    label: "Real-Time Decisioning in Field Notes",
+    detail: "Map ingestion outputs into recommendation scores and route top candidates to adaptive UI panels in-session.",
   },
   {
-    label: "Identifying Missing Context",
-    detail: "GPS location, user intent, trip duration, and identity layer are not present in the current system — evaluating what to build vs. accept as v1 constraints.",
+    label: "Adaptive Panel Orchestration",
+    detail: "Define panel rules for reorder, replacement, and confidence labels as context changes mid-journey.",
   },
   {
-    label: "GPS + Location UX",
-    detail: "Browser Geolocation opt-in within the city guide — enabling within-city spatial precision for HADE recommendations without requiring a native app.",
+    label: "API-Ready Integration Hook",
+    detail: "Ship a safe client preview mode today while preparing transport contracts for live HADE endpoint connection.",
   },
 ];
 
 const CURRENT_REALITY = [
   {
-    headline: "HADE is not yet integrated",
-    body: "The product runs entirely without HADE today. The only HADE-facing element is a static 'Coming Soon' placeholder component with no backend, no API hooks, and no data contract.",
+    headline: "Field Notes modules are live and stable",
+    body: "Offline-first core, Arrival Intelligence, and Live City Pulse are usable today and define the baseline traveler experience.",
   },
   {
-    headline: "The slot exists",
-    body: "SpontaneityEnginePromo.tsx reserves the injection point inside the city guide view. It is the target — not the implementation.",
+    headline: "HADE decision loop is in preview mode",
+    body: "UI placeholders now simulate text + voice signal handling and recommendation scoring without requiring live backend availability.",
   },
   {
-    headline: "This is the transition phase",
-    body: "The system audit has mapped what Field Notes can provide to HADE and what gaps must be resolved before integration can begin.",
+    headline: "Real-time panel adaptation is staged",
+    body: "Adaptive panel logic is framed in the UX flow and ready for endpoint-driven decision outputs.",
   },
 ];
 
 const SYSTEM_GAPS = [
-  "No real-time GPS — city-level coordinates only; within-city precision requires Geolocation API opt-in",
-  "No user identity — personalization is impossible without an auth or anonymous session layer",
-  "No trip dates or departure context — temporal relevance of recommendations is impaired",
-  "No visited-places tracking — the system has no memory of where the user has already been",
-  "Offline-first vs. live AI — a fundamental tension; HADE requires connectivity, offline users get nothing",
-  "No events or POI data feed — HADE cannot recommend specific venues without a real-time data source",
-  "No user preference profile — no way to know if a user prefers food, culture, or outdoor activity",
+  "Voice transcription + confidence scoring is still mocked in the client preview layer",
+  "Trust weighting schema needs persistent memory to refine recommendations session-over-session",
+  "Within-city GPS precision is opt-in and not yet consistently available across flows",
+  "No production HADE endpoint is wired yet for live recommendation scoring",
+  "Adaptive panel telemetry is not yet connected to a closed-loop learning pipeline",
+  "Offline fallback strategy for HADE recommendations needs explicit finalization",
+  "POI freshness and source reliability controls still need operational guardrails",
 ];
 
 const WHATS_NEXT = [
-  "Define and lock the HADE context contract (input schema)",
-  "Build /api/hade-recommend endpoint or proxy to HADE service",
-  "Replace SpontaneityEnginePromo with a live-data connected component",
-  "Add Geolocation API opt-in for within-city spatial precision",
-  "Implement offline fallback strategy (IDB cache or graceful degradation)",
-  "Field test first HADE integration in a real travel environment",
+  "Finalize the HADE input schema for text, voice, location, and module context",
+  "Connect the preview hook to a live HADE recommendation endpoint",
+  "Implement trust + intent weighting service in the ingestion layer",
+  "Deploy adaptive panel ranking logic in the Field Notes recommendation slot",
+  "Run real-world pilot sessions and validate confidence-scored recommendation quality",
+  "Promote decision telemetry into a repeatable optimization loop",
 ];
 
 export default function Page() {
@@ -148,13 +149,13 @@ export default function Page() {
               accent={ACCENT}
               left={{
                 label: "What Exists Today",
-                heading: "A deployed, working product",
-                body: "Field Notes is a live PWA with 11 city packs, offline-first architecture, arrival intelligence, environmental data, and live city pulse modules. It works without HADE.",
+                heading: "Field Notes running in production",
+                body: "Offline-first core, Arrival Intelligence, and Live City Pulse are already usable in a deployed PWA experience.",
               }}
               right={{
-                label: "What Comes Next",
-                heading: "HADE integration — in design",
-                body: "The HADE Decision Engine is the next layer. A placeholder slot exists in the product. The API contract, context payload, and offline fallback strategy are being defined now.",
+                label: "HADE Engine Layer",
+                heading: "Signal-driven adaptive UX",
+                body: "User-generated text + voice signals flow into HADE scoring to drive adaptive recommendation panels in real time.",
               }}
             />
           </section>
@@ -192,8 +193,8 @@ export default function Page() {
             </p>
             <PrincipleBlock
               accent={ACCENT}
-              statement="The goal is not to replace spontaneity — it's to enable it."
-              supporting="Travel Packs is built around minimal screen time, fast decisions, and a fast return to the real world. Every design choice reduces the cost of deciding—so more of the trip can be lived."
+              statement="The interface should listen first, then adapt."
+              supporting="HADE turns user-generated signals into ranked decisions so travelers spend less time searching and more time moving through the city."
             />
           </section>
         </Reveal>
@@ -205,9 +206,12 @@ export default function Page() {
               System in Action
             </p>
             <p className="text-sm text-ink/55 leading-relaxed mb-5">
-              What the product contains today — before HADE integration begins.
+              The full UX decision loop: Field Notes modules, HADE signal ingestion, adaptive panels, and recommendation output.
             </p>
             <SystemGrid items={SYSTEM_ITEMS} accent={ACCENT} />
+            <div className="mt-6">
+              <HadeEngineSystemsDiagram accent={ACCENT} />
+            </div>
           </section>
         </Reveal>
 
@@ -276,10 +280,19 @@ export default function Page() {
           </section>
         </Reveal>
 
-        {/* ── 10. Future Product Entry Point ────────────────────────── */}
+        {/* ── 10. Live Product ──────────────────────────────────────── */}
         <Reveal delay={370}>
           <section className="mb-16">
-            <FutureProductCTA accent={ACCENT} />
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-5">
+              Live Product
+            </p>
+            <FutureProductCTA
+              accent={ACCENT}
+              heading="Field Notes PWA — Active Build Surface"
+              description="Field Notes is live with core travel modules today. HADE integration is staged to convert user-generated signals into adaptive recommendations in-session."
+              subtext="Current build supports offline core + module context while HADE backend connection is being finalized."
+              buttonLabel="View Live Product"
+            />
           </section>
         </Reveal>
 
