@@ -1,5 +1,4 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import OpenAI from "openai";
 import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -11,100 +10,106 @@ type HadeDecision = {
   subNode: string;
 };
 
-const PROVIDER_TIMEOUT_MS = 10_000;
-const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
+type GeminiModelInfo = {
+  name?: string;
+  displayName?: string;
+  description?: string;
+  version?: string;
+  supportedGenerationMethods?: string[];
+};
 
-const GEMINI_MODEL_CANDIDATES = Array.from(
-  new Set(
-    [
-      process.env.GEMINI_MODEL,
-      "gemini-2.0-flash",
-      "gemini-1.5-flash",
-      "gemini-pro",
-    ].filter((value): value is string => Boolean(value)),
-  ),
-);
-
-const SYSTEM_INSTRUCTION = [
-  "You are HADE (Holistic Adaptive Decision Engine) Orchestrator.",
-  "Interpret user signals and return one decision object.",
-  "Output requirements:",
-  '- Return valid JSON with exactly 3 keys: "keyword", "description", "subNode".',
-  "- No markdown, no code fences, no prose before/after JSON.",
-  "- keyword: concise Title Case phrase (1-3 words).",
-  "- description: one sentence (max 22 words).",
-  "- subNode: specific node or location string.",
-  "If uncertain, make a reasonable best effort but still return valid JSON.",
-].join("\n");
-
-const STATIC_FALLBACK: HadeDecision = {
+const FALLBACK_RESPONSE: HadeDecision = {
   keyword: "Adaptive Guidance",
   description:
-    "HADE is surfacing a clear next step so users can continue forward without friction.",
+    "HADE surfaced a clear next step to reduce friction and keep the user moving forward.",
   subNode: "Primary Flow",
 };
 
-const PLACE_NODES = [
-  "Karaköy",
-  "Moda",
-  "Nişantaşı",
-  "Bebek",
-  "Cihangir",
-  "Kadıköy",
-  "Beşiktaş",
-  "Galata",
-];
+const SYSTEM_INSTRUCTION = [
+  "You are HADE (Holistic Adaptive Decision Engine) Orchestrator.",
+  "Interpret the input signal and return one decision object.",
+  "Return strict JSON only with exactly these keys: keyword, description, subNode.",
+  "Do not return markdown or code fences.",
+  "keyword must be a short Title Case phrase.",
+  "description must be one concise sentence.",
+].join("\n");
 
-function logEvent(
-  level: "info" | "warn" | "error",
-  event: string,
-  meta: Record<string, unknown> = {},
-) {
-  const payload = {
-    ts: new Date().toISOString(),
-    route: "/api/generate-hade",
-    event,
-    ...meta,
-  };
+const MODEL_CANDIDATES = [
+  process.env.GEMINI_MODEL,
+  "gemini-pro",
+  "gemini-1.5-flash",
+  "gemini-1.5-pro",
+].filter((value): value is string => Boolean(value?.trim()));
 
-  const line = `[generate-hade] ${JSON.stringify(payload)}`;
-  if (level === "error") {
-    console.error(line);
-    return;
-  }
-  if (level === "warn") {
-    console.warn(line);
-    return;
-  }
-  console.log(line);
+function log(event: string, data?: Record<string, unknown>) {
+  console.log(
+    `[generate-hade] ${JSON.stringify({
+      ts: new Date().toISOString(),
+      event,
+      ...(data || {}),
+    })}`,
+  );
 }
 
-function compactWhitespace(value: string) {
+function logError(event: string, error: unknown, data?: Record<string, unknown>) {
+  const errObj =
+    error && typeof error === "object"
+      ? (error as {
+          message?: string;
+          status?: number;
+          code?: string | number;
+          name?: string;
+          stack?: string;
+        })
+      : { message: String(error) };
+
+  console.error(
+    `[generate-hade] ${JSON.stringify({
+      ts: new Date().toISOString(),
+      event,
+      ...(data || {}),
+      error: {
+        name: errObj.name,
+        message: errObj.message,
+        status: errObj.status,
+        code: errObj.code,
+      },
+    })}`,
+  );
+}
+
+function compact(value: string) {
   return value.replace(/\s+/g, " ").trim();
 }
 
-function truncate(value: string, length = 220) {
-  if (value.length <= length) {
+function truncate(value: string, max = 300) {
+  if (value.length <= max) {
     return value;
   }
-  return `${value.slice(0, length)}...`;
+  return `${value.slice(0, max)}...`;
+}
+
+function normalizeModelName(modelName: string) {
+  return modelName.replace(/^models\//, "");
 }
 
 function buildPrompt(signal: string, moduleName: string, location: string) {
   return [
-    "<request>",
-    `signal="${signal}"`,
-    `module="${moduleName}"`,
-    `location="${location}"`,
-    "</request>",
-    "",
     "Return JSON only.",
+    "{",
+    '  "keyword": "string",',
+    '  "description": "string",',
+    '  "subNode": "string"',
+    "}",
+    "",
+    `<signal>${signal}</signal>`,
+    `<module>${moduleName}</module>`,
+    `<location>${location}</location>`,
   ].join("\n");
 }
 
 function extractJsonCandidate(raw: string): string | null {
   const trimmed = raw.trim();
-
   if (!trimmed) {
     return null;
   }
@@ -113,14 +118,9 @@ function extractJsonCandidate(raw: string): string | null {
     return trimmed;
   }
 
-  const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fencedMatch?.[1]) {
-    return fencedMatch[1].trim();
-  }
-
-  const taggedMatch = trimmed.match(/<json>\s*([\s\S]*?)\s*<\/json>/i);
-  if (taggedMatch?.[1]) {
-    return taggedMatch[1].trim();
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
+  if (fenced) {
+    return fenced.trim();
   }
 
   const firstBrace = trimmed.indexOf("{");
@@ -133,27 +133,27 @@ function extractJsonCandidate(raw: string): string | null {
   let escaped = false;
 
   for (let i = firstBrace; i < trimmed.length; i += 1) {
-    const char = trimmed[i];
+    const ch = trimmed[i];
 
     if (inString) {
       if (escaped) {
         escaped = false;
-      } else if (char === "\\") {
+      } else if (ch === "\\") {
         escaped = true;
-      } else if (char === '"') {
+      } else if (ch === '"') {
         inString = false;
       }
       continue;
     }
 
-    if (char === '"') {
+    if (ch === '"') {
       inString = true;
       continue;
     }
 
-    if (char === "{") {
+    if (ch === "{") {
       depth += 1;
-    } else if (char === "}") {
+    } else if (ch === "}") {
       depth -= 1;
       if (depth === 0) {
         return trimmed.slice(firstBrace, i + 1).trim();
@@ -164,281 +164,248 @@ function extractJsonCandidate(raw: string): string | null {
   return null;
 }
 
-function regexExtractFields(raw: string): Partial<HadeDecision> {
-  const keywordMatch = raw.match(/"keyword"\s*:\s*"([^"]{1,120})"/i);
-  const descriptionMatch = raw.match(/"description"\s*:\s*"([^"]{1,400})"/i);
-  const subNodeMatch = raw.match(/"subNode"\s*:\s*"([^"]{1,120})"/i);
-
-  return {
-    keyword: keywordMatch?.[1],
-    description: descriptionMatch?.[1],
-    subNode: subNodeMatch?.[1],
-  };
-}
-
-function isValidDecision(value: unknown): value is HadeDecision {
-  if (!value || typeof value !== "object") {
+function validateDecision(data: unknown): data is HadeDecision {
+  if (!data || typeof data !== "object") {
     return false;
   }
 
-  const candidate = value as Record<string, unknown>;
-
+  const value = data as Record<string, unknown>;
   return (
-    typeof candidate.keyword === "string" &&
-    typeof candidate.description === "string" &&
-    typeof candidate.subNode === "string" &&
-    candidate.keyword.trim().length > 0 &&
-    candidate.description.trim().length > 0 &&
-    candidate.subNode.trim().length > 0
+    typeof value.keyword === "string" &&
+    typeof value.description === "string" &&
+    typeof value.subNode === "string" &&
+    value.keyword.trim().length > 0 &&
+    value.description.trim().length > 0 &&
+    value.subNode.trim().length > 0
   );
 }
 
-function normalizeDecision(value: HadeDecision): HadeDecision {
-  return {
-    keyword: compactWhitespace(value.keyword).slice(0, 80),
-    description: compactWhitespace(value.description).slice(0, 280),
-    subNode: compactWhitespace(value.subNode).slice(0, 80),
-  };
-}
-
-function parseDecision(raw: string): HadeDecision | null {
-  const candidate = extractJsonCandidate(raw) || raw;
+function safeParse(rawText: string): HadeDecision | null {
+  const candidate = extractJsonCandidate(rawText) || rawText;
 
   try {
     const parsed = JSON.parse(candidate);
-    if (isValidDecision(parsed)) {
-      return normalizeDecision(parsed);
+    if (!validateDecision(parsed)) {
+      return null;
     }
+    return {
+      keyword: compact(parsed.keyword).slice(0, 80),
+      description: compact(parsed.description).slice(0, 280),
+      subNode: compact(parsed.subNode).slice(0, 80),
+    };
   } catch {
-    // Falls back to regex extraction below.
+    return null;
   }
-
-  const extracted = regexExtractFields(candidate);
-  if (isValidDecision(extracted)) {
-    return normalizeDecision(extracted);
-  }
-
-  return null;
 }
 
-function deriveStaticDecision(
+function deterministicFallback(
   signal: string,
   moduleName: string,
   location: string,
 ): HadeDecision {
-  const merged = compactWhitespace(`${signal} ${moduleName}`).toLowerCase();
-
+  const merged = `${signal} ${moduleName}`.toLowerCase();
   let keyword = "Adaptive Guidance";
-  if (/(onboard|setup|activate|start)/i.test(merged)) {
+
+  if (/(activate|onboard|setup|start)/.test(merged)) {
     keyword = "Activation Flow";
-  } else if (/(stuck|idle|confused|drop|blocked)/i.test(merged)) {
+  } else if (/(stuck|drop|friction|idle|confused)/.test(merged)) {
     keyword = "Friction Recovery";
-  } else if (/(analytics|insight|data|dashboard)/i.test(merged)) {
+  } else if (/(data|analytics|insight|dashboard)/.test(merged)) {
     keyword = "Insight Mapping";
-  } else if (/(team|collab|share)/i.test(merged)) {
-    keyword = "Team Enablement";
   }
 
-  const matchedNode = PLACE_NODES.find((node) =>
-    new RegExp(node, "i").test(`${signal} ${location}`),
+  const subNode = compact(location) || FALLBACK_RESPONSE.subNode;
+  return {
+    keyword,
+    description: `HADE recommended a ${keyword.toLowerCase()} step for ${subNode} based on current user signal.`,
+    subNode,
+  };
+}
+
+async function listGeminiModels(
+  client: GoogleGenerativeAI,
+  apiKey: string,
+): Promise<GeminiModelInfo[]> {
+  const dynamicClient = client as unknown as {
+    listModels?: () => Promise<{ models?: GeminiModelInfo[] }>;
+  };
+
+  if (typeof dynamicClient.listModels === "function") {
+    try {
+      const response = await dynamicClient.listModels();
+      const models = response?.models || [];
+      log("gemini.list_models.sdk_success", {
+        count: models.length,
+      });
+      models.forEach((model, index) => {
+        log("gemini.model", {
+          index,
+          name: model.name,
+          displayName: model.displayName,
+          version: model.version,
+          supportedGenerationMethods: model.supportedGenerationMethods,
+        });
+      });
+      return models;
+    } catch (error) {
+      logError("gemini.list_models.sdk_failed", error);
+    }
+  } else {
+    log("gemini.list_models.sdk_unavailable");
+  }
+
+  const endpoint = "https://generativelanguage.googleapis.com/v1beta/models";
+
+  try {
+    const response = await fetch(`${endpoint}?key=${encodeURIComponent(apiKey)}`, {
+      method: "GET",
+      cache: "no-store",
+    });
+
+    const payload = (await response.json().catch(() => null)) as
+      | { models?: GeminiModelInfo[]; error?: unknown }
+      | null;
+
+    if (!response.ok) {
+      log("gemini.list_models.rest_failed", {
+        status: response.status,
+        statusText: response.statusText,
+        payload,
+      });
+      return [];
+    }
+
+    const models = payload?.models || [];
+    log("gemini.list_models.rest_success", {
+      endpoint,
+      count: models.length,
+    });
+    models.forEach((model, index) => {
+      log("gemini.model", {
+        index,
+        endpoint: model.name,
+        displayName: model.displayName,
+        version: model.version,
+        supportedGenerationMethods: model.supportedGenerationMethods,
+      });
+    });
+
+    return models;
+  } catch (error) {
+    logError("gemini.list_models.rest_error", error, { endpoint });
+    return [];
+  }
+}
+
+function selectModel(models: GeminiModelInfo[]) {
+  const available = new Set(
+    models
+      .filter((model) => model.supportedGenerationMethods?.includes("generateContent"))
+      .map((model) => normalizeModelName(model.name || ""))
+      .filter(Boolean),
   );
 
-  const subNode = matchedNode || compactWhitespace(location) || "Primary Flow";
-  const description = `HADE identified a ${keyword.toLowerCase()} opportunity and recommended a clear next step for ${subNode}.`;
-
-  return normalizeDecision({ keyword, description, subNode });
-}
-
-function serializeError(error: unknown) {
-  if (error && typeof error === "object") {
-    const unknownError = error as {
-      message?: string;
-      status?: number;
-      code?: string;
-      name?: string;
-      type?: string;
-    };
-
-    return {
-      name: unknownError.name,
-      type: unknownError.type,
-      status: unknownError.status,
-      code: unknownError.code,
-      message: unknownError.message,
-    };
-  }
-
-  return { message: String(error) };
-}
-
-async function withTimeout<T>(
-  promise: Promise<T>,
-  timeoutMs: number,
-  provider: string,
-): Promise<T> {
-  let timeoutRef: NodeJS.Timeout | null = null;
-
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutRef = setTimeout(() => {
-      reject(new Error(`${provider} timed out after ${timeoutMs}ms`));
-    }, timeoutMs);
-  });
-
-  try {
-    return await Promise.race([promise, timeoutPromise]);
-  } finally {
-    if (timeoutRef) {
-      clearTimeout(timeoutRef);
-    }
-  }
-}
-
-async function tryGemini(prompt: string): Promise<HadeDecision | null> {
-  const geminiKey = process.env.GEMINI_API_KEY;
-  if (!geminiKey) {
-    logEvent("warn", "gemini_skipped_missing_key");
-    return null;
-  }
-
-  const client = new GoogleGenerativeAI(geminiKey);
-
-  for (const modelName of GEMINI_MODEL_CANDIDATES) {
-    try {
-      logEvent("info", "gemini_attempt", { model: modelName });
-
-      const model = client.getGenerativeModel({
-        model: modelName,
-        systemInstruction: SYSTEM_INSTRUCTION,
-        generationConfig: {
-          responseMimeType: "application/json",
-          temperature: 0.4,
-        },
-      });
-
-      const result = await withTimeout(
-        model.generateContent(prompt),
-        PROVIDER_TIMEOUT_MS,
-        "gemini",
-      );
-      const rawText = result.response.text();
-      const parsed = parseDecision(rawText);
-
-      if (parsed) {
-        logEvent("info", "gemini_success", { model: modelName });
-        return parsed;
-      }
-
-      logEvent("warn", "gemini_parse_failed", {
-        model: modelName,
-        rawPreview: truncate(rawText),
-      });
-    } catch (error) {
-      logEvent("warn", "gemini_failed", {
-        model: modelName,
-        error: serializeError(error),
-      });
+  for (const candidate of MODEL_CANDIDATES) {
+    const normalized = normalizeModelName(candidate);
+    if (available.size === 0 || available.has(normalized)) {
+      return normalized;
     }
   }
 
-  return null;
-}
-
-async function tryOpenAI(prompt: string): Promise<HadeDecision | null> {
-  const openaiKey = process.env.OPENAI_API_KEY;
-  if (!openaiKey) {
-    logEvent("warn", "openai_skipped_missing_key");
-    return null;
+  if (available.size > 0) {
+    return Array.from(available)[0];
   }
 
-  const client = new OpenAI({ apiKey: openaiKey });
-
-  try {
-    logEvent("info", "openai_attempt", { model: OPENAI_MODEL });
-
-    const completion = await withTimeout(
-      client.chat.completions.create({
-        model: OPENAI_MODEL,
-        temperature: 0.4,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: SYSTEM_INSTRUCTION },
-          { role: "user", content: prompt },
-        ],
-      }),
-      PROVIDER_TIMEOUT_MS,
-      "openai",
-    );
-
-    const rawText = completion.choices?.[0]?.message?.content ?? "";
-    const parsed = parseDecision(rawText);
-
-    if (parsed) {
-      logEvent("info", "openai_success", { model: OPENAI_MODEL });
-      return parsed;
-    }
-
-    logEvent("warn", "openai_parse_failed", {
-      model: OPENAI_MODEL,
-      rawPreview: truncate(rawText),
-    });
-
-    return null;
-  } catch (error) {
-    const parsedError = serializeError(error);
-    logEvent("warn", "openai_failed", {
-      model: OPENAI_MODEL,
-      error: parsedError,
-      quotaIssue:
-        parsedError.status === 429 ||
-        /quota|insufficient_quota|rate/i.test(parsedError.message || ""),
-    });
-    return null;
-  }
-}
-
-function getString(input: unknown, fallback: string) {
-  if (typeof input !== "string") {
-    return fallback;
-  }
-  const value = compactWhitespace(input);
-  return value || fallback;
+  return "gemini-pro";
 }
 
 export async function POST(req: NextRequest) {
   try {
-    let body: unknown = {};
+    log("request_received");
 
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      log("missing_gemini_api_key");
+      return NextResponse.json(FALLBACK_RESPONSE, { status: 200 });
+    }
+
+    let body: unknown = {};
     try {
       body = await req.json();
     } catch (error) {
-      logEvent("warn", "invalid_request_json", { error: serializeError(error) });
+      logError("request_body_parse_failed", error);
     }
+
+    log("request_body", {
+      bodyPreview: truncate(JSON.stringify(body ?? {})),
+    });
 
     const payload = (body && typeof body === "object" ? body : {}) as Record<
       string,
       unknown
     >;
-    const signal = getString(payload.signal, "Open to anything");
-    const moduleName = getString(payload.module, "General exploration");
-    const location = getString(payload.location, "Istanbul");
+
+    const signal =
+      typeof payload.signal === "string" && compact(payload.signal)
+        ? compact(payload.signal)
+        : "Open to anything";
+    const moduleName =
+      typeof payload.module === "string" && compact(payload.module)
+        ? compact(payload.module)
+        : "General exploration";
+    const location =
+      typeof payload.location === "string" && compact(payload.location)
+        ? compact(payload.location)
+        : "Istanbul";
+
+    log("request_normalized", { signal, moduleName, location });
+
+    const client = new GoogleGenerativeAI(apiKey);
+    const modelList = await listGeminiModels(client, apiKey);
+    const selectedModel = selectModel(modelList);
+
+    log("gemini.model_selected", { selectedModel });
+
+    const model = client.getGenerativeModel({
+      model: selectedModel,
+      systemInstruction: SYSTEM_INSTRUCTION,
+      generationConfig: {
+        responseMimeType: "application/json",
+        temperature: 0.4,
+      },
+    });
 
     const prompt = buildPrompt(signal, moduleName, location);
+    log("gemini.generate_start", {
+      model: selectedModel,
+      promptPreview: truncate(prompt),
+    });
 
-    const geminiDecision = await tryGemini(prompt);
-    if (geminiDecision) {
-      return NextResponse.json(geminiDecision, { status: 200 });
+    const result = await model.generateContent(prompt);
+    const rawText = result?.response?.text?.() || "";
+
+    log("gemini.generate_response", {
+      model: selectedModel,
+      rawPreview: truncate(rawText),
+    });
+
+    const parsed = safeParse(rawText);
+    log("gemini.parse_result", {
+      success: Boolean(parsed),
+      parsed,
+    });
+
+    if (parsed) {
+      log("response_path_gemini_success", { model: selectedModel });
+      return NextResponse.json(parsed, { status: 200 });
     }
 
-    const openaiDecision = await tryOpenAI(prompt);
-    if (openaiDecision) {
-      return NextResponse.json(openaiDecision, { status: 200 });
-    }
-
-    const adaptiveFallback = deriveStaticDecision(signal, moduleName, location);
-    logEvent("warn", "fallback_used", { reason: "all_providers_failed" });
-    return NextResponse.json(adaptiveFallback, { status: 200 });
+    const fallback = deterministicFallback(signal, moduleName, location);
+    log("response_path_fallback_parse_failed", { fallback });
+    return NextResponse.json(fallback, { status: 200 });
   } catch (error) {
-    logEvent("error", "fatal_route_error", { error: serializeError(error) });
-    return NextResponse.json(STATIC_FALLBACK, { status: 200 });
+    logError("route_unhandled_error", error);
+    log("response_path_fallback_exception");
+    return NextResponse.json(FALLBACK_RESPONSE, { status: 200 });
   }
 }
