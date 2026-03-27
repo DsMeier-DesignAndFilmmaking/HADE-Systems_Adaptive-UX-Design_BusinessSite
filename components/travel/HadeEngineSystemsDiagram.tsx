@@ -726,9 +726,24 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
         setGeneratedOutput(() => buildClientFallback(signal.moduleContext, signal.combinedSignal));
       }
     } finally {
+      // Minimum 800ms buffer: ensures ProcessingStep has cleared its enter animation
+      // before the data-ready signal unlocks the gate. With AnimatePresence mode="wait",
+      // the enter animation doesn't even start until t=600ms (after the exit plays).
+      // A React re-render at exactly t=600ms can jam the Framer Motion fiber at opacity:0.
+      // Holding dataReady until t=800ms guarantees a stable mid-enter mount point.
       if (isMountedRef.current) {
-        setDataReady(true);
-        setIsLoading(false);
+        const elapsed = Date.now() - processingStartRef.current;
+        const MIN_BUFFER_MS = 800;
+        if (elapsed < MIN_BUFFER_MS) {
+          await new Promise<void>((resolve) =>
+            setTimeout(resolve, MIN_BUFFER_MS - elapsed)
+          );
+        }
+        // Re-check after the async wait — component may have unmounted during the delay.
+        if (isMountedRef.current) {
+          setDataReady(true);
+          setIsLoading(false);
+        }
       }
     }
   };
