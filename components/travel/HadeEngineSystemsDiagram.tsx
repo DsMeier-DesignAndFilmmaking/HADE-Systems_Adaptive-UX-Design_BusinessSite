@@ -605,9 +605,15 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
   const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
 
   // Gate: advance to result only when both the 3.2s mask and the API call are done
-  useEffect(() => {
-    if (step === "processing" && timerDone && dataReady) setStep("result");
-  }, [step, timerDone, dataReady]);
+// Force the transition whenever both conditions are met
+useEffect(() => {
+  let transitionTimer: NodeJS.Timeout;
+  if (step === "processing" && timerDone && dataReady) {
+    // Adding a tiny 50ms delay helps Framer Motion catch the state change
+    transitionTimer = setTimeout(() => setStep("result"), 50);
+  }
+  return () => clearTimeout(transitionTimer);
+}, [step, timerDone, dataReady]);
 
   const isValidDecisionNode = (value: unknown): value is DecisionNode => {
     if (!value || typeof value !== "object") return false;
@@ -727,7 +733,7 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
         <h2 className="text-5xl md:text-6xl font-bold tracking-tighter">HADE Orchestration</h2>
       </div>
 
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="wait" initial={false}>
         <motion.div key={step} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.6, ease: [0.19, 1, 0.22, 1] }}>
           {step === "input" && <UnifiedInputStep signal={signal} setSignal={setSignal} onNext={handleExplore} isLoading={isLoading} />}
           {step === "processing" && <ProcessingStep signal={signal} onComplete={() => setTimerDone(true)} />}
