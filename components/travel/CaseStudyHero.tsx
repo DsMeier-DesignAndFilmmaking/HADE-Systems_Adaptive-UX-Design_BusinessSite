@@ -19,7 +19,7 @@ export default function CaseStudyHero({ accent = "#0891B2" }: CaseStudyHeroProps
             color: accent,
           }}
         >
-          Live Product — In Progress
+          Live Product — Testing
         </span>
         <span className="rounded-full border border-line bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-ink/45">
           Travel · Live Build

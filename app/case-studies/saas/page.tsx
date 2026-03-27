@@ -291,11 +291,6 @@ export default function Page() {
                   hook: "Text and voice signals feed adaptive panels that restructure travel recommendations in real time.",
                 },
                 {
-                  href: "/case-studies/system",
-                  label: "Adaptive System Lab",
-                  hook: "A unified behavioral layer connecting onboarding, usage, and retention as a single adaptive system.",
-                },
-                {
                   href: "/case-studies/ai-tool",
                   label: "Adaptive AI Interaction",
                   hook: "Task-stage classification that replaces the blank slate with structured scaffolding matched to the user's workflow.",

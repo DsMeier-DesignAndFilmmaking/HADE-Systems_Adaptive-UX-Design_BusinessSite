@@ -36,14 +36,6 @@ const CASE_STUDIES = [
     tag: "SaaS",
     href: "/case-studies/saas",
   },
-  {
-    title: "End-to-End Adaptive UX System Design",
-    description:
-      "Onboarding, core usage, and retention operated as isolated layers with no shared behavioral state. Each stage made decisions independently — no signal carried forward, no pattern informed the next. The product couldn't adapt because the system wasn't built to communicate with itself.",
-    metric: "Outcome: unified behavioral layer connecting onboarding through retention",
-    tag: "System · Adaptive UX Lab",
-    href: "/case-studies/system",
-  },
 ];
 
 const HOW_HADE_WORKS = [
