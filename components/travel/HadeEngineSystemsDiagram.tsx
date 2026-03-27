@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, startTransition } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { MapPin } from "lucide-react";
 import { GoogleMap, OverlayView, useJsApiLoader } from "@react-google-maps/api";
@@ -290,9 +290,9 @@ function UnifiedInputStep({ signal, setSignal, onNext, isLoading }: any) {
   );
 }
 
-const ProcessingStep = React.memo(function ProcessingStep({ signal, onComplete }: any) {
+const ProcessingStep = React.memo(function ProcessingStep({ signal, onComplete, duration = 3200 }: any) {
   const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
-  useEffect(() => { const t = setTimeout(onComplete, 3200); return () => clearTimeout(t); }, [onComplete]);
+  useEffect(() => { const t = setTimeout(onComplete, duration); return () => clearTimeout(t); }, [onComplete, duration]);
 
   return (
     <div className="flex min-h-[600px] flex-col items-center justify-center rounded-[2.5rem] bg-white/70 p-12 backdrop-blur-2xl">
@@ -305,7 +305,7 @@ const ProcessingStep = React.memo(function ProcessingStep({ signal, onComplete }
           <div className="space-y-2 text-center">
             <span className="text-[10px] font-black uppercase tracking-widest text-ink/40">{theme.metricLabel} Check</span>
             <div className="h-1 w-full bg-ink/5 rounded-full overflow-hidden mt-4">
-              <motion.div initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: 3 }} className="h-full" style={{ background: theme.primary }} />
+              <motion.div initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: duration / 1000 }} className="h-full" style={{ background: theme.primary }} />
             </div>
           </div>
           <p className="text-center text-[10px] font-bold text-ink/30 uppercase tracking-[0.3em]">
@@ -610,18 +610,27 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
     return () => { isMountedRef.current = false; };
   }, []);
 
+  // Tracks the wall-clock moment processing started — used by the Race Guard.
+  const processingStartRef = useRef<number>(0);
+
   const handleTimerComplete = useCallback(() => setTimerDone(true), []);
 
-  // Gate: advance to result only when both the 3.2s mask and the API call are done
-// Force the transition whenever both conditions are met
-useEffect(() => {
-  let transitionTimer: NodeJS.Timeout;
-  if (step === "processing" && timerDone && dataReady) {
-    // Adding a tiny 50ms delay helps Framer Motion catch the state change
-    transitionTimer = setTimeout(() => setStep("result"), 50);
-  }
-  return () => clearTimeout(transitionTimer);
-}, [step, timerDone, dataReady]);
+  // Gate: advance to "result" only when both the processing timer and API call are done.
+  // Race Guard: enforce a minimum 1000ms on-screen display regardless of data arrival speed.
+  // This gives Framer Motion a stable AnimatePresence frame before transitioning.
+  useEffect(() => {
+    let transitionTimer: NodeJS.Timeout;
+    if (step === "processing" && timerDone && dataReady) {
+      const elapsed = Date.now() - processingStartRef.current;
+      const MIN_DISPLAY_MS = 1000;
+      // floor at 50ms so the exit animation always has a starting point
+      const remaining = Math.max(50, MIN_DISPLAY_MS - elapsed);
+      transitionTimer = setTimeout(() => {
+        startTransition(() => setStep("result"));
+      }, remaining);
+    }
+    return () => clearTimeout(transitionTimer);
+  }, [step, timerDone, dataReady]);
 
   const isValidDecisionNode = (value: unknown): value is DecisionNode => {
     if (!value || typeof value !== "object") return false;
@@ -675,6 +684,7 @@ useEffect(() => {
     setDataReady(false);
     setIsLoading(true);
     setStep("processing");
+    processingStartRef.current = Date.now();
 
     try {
       const requestPayload = {
@@ -706,7 +716,9 @@ useEffect(() => {
       );
       console.log("FINAL MAPPED DATA:", parsedCardData);
       if (isMountedRef.current) {
-        setGeneratedOutput(() => parsedCardData);
+        startTransition(() => {
+          setGeneratedOutput(() => parsedCardData);
+        });
       }
     } catch (error) {
       console.error("[HADE Demo] Failed to generate decision", error);
@@ -750,7 +762,13 @@ useEffect(() => {
       <AnimatePresence mode="wait" initial={false}>
         <motion.div key={step} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.6, ease: [0.19, 1, 0.22, 1] }}>
           {step === "input" && <UnifiedInputStep signal={signal} setSignal={setSignal} onNext={handleExplore} isLoading={isLoading} />}
-          {step === "processing" && <ProcessingStep signal={signal} onComplete={handleTimerComplete} />}
+          {step === "processing" && (
+            <ProcessingStep
+              signal={signal}
+              onComplete={handleTimerComplete}
+              duration={signal.llmChoice === "llama" ? 1200 : 3200}
+            />
+          )}
           {step === "result" && <ResultStep signal={signal} generatedOutput={safeOutput} onRestart={restart} onGo={() => setStep("mapping")} />}
           {step === "mapping" && <TacticalMapStep signal={signal} generatedOutput={safeOutput} onRestart={restart} />}
         </motion.div>
