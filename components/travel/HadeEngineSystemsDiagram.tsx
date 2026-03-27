@@ -612,6 +612,7 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
   const [timerDone, setTimerDone] = useState(false);
   const [dataReady, setDataReady] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
   const exploreStartRef = useRef<number>(0);
   const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
 
@@ -693,6 +694,7 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
     // Interaction guard: prevent overlapping requests/transitions.
     if (isLoading) return;
 
+    setApiError(null);
     exploreStartRef.current = Date.now();
     setTimerDone(false);
     setDataReady(false);
@@ -729,6 +731,7 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
       );
       console.log("FINAL MAPPED DATA:", parsedCardData);
       setGeneratedOutput(parsedCardData);
+      setDataReady(true); // Only set on success — prevents stale timer-gate transitions on error.
 
       // Llama fast-path: bypass timer gate immediately once data is available.
       if (signal.llmChoice === "llama") {
@@ -745,17 +748,14 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
           setIsLoading(false);
         }, delay);
       }
+      // Gemini: useEffect gate handles transition via dataReady + timerDone — no action here.
     } catch (error) {
       console.error("[HADE Demo] Failed to generate decision", error);
-      setGeneratedOutput(buildClientFallback(signal.moduleContext, signal.combinedSignal));
-      // Claude error fallback: exit processing immediately (no timer to wait for).
-      if (signal.llmChoice === "claude") {
-        setStep("result");
-        setTimerDone(true);
-        setIsLoading(false);
-      }
-    } finally {
-      setDataReady(true);
+      // Return to input — do NOT advance to result with stale/fallback data.
+      // setDataReady intentionally stays false: prevents the timer-gate useEffect from firing.
+      setStep("input");
+      setIsLoading(false);
+      setApiError("The HADE engine couldn't reach the API. Please try again.");
     }
   };
 
@@ -766,6 +766,7 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
     setTimerDone(false);
     setDataReady(false);
     setIsLoading(false);
+    setApiError(null);
   };
 
   const safeOutput =
@@ -784,6 +785,21 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
         </div>
         <h2 className="text-5xl md:text-6xl font-bold tracking-tighter">HADE Orchestration</h2>
       </div>
+
+      <AnimatePresence>
+        {apiError && step === "input" && (
+          <motion.div
+            key="api-error-banner"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.3 }}
+            className="mb-4 rounded-2xl border border-red-200/60 bg-red-50/80 px-5 py-3 text-[11px] font-black uppercase tracking-widest text-red-500 backdrop-blur-sm"
+          >
+            ⚠ Engine Offline — {apiError}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence mode="popLayout" initial={false}>
         <motion.div key={step} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.6, ease: [0.19, 1, 0.22, 1] }}>

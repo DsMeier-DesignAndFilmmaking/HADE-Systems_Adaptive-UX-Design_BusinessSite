@@ -93,8 +93,15 @@ const MODULE_PROMPT_TEMPLATES: Record<string, string> = {
   ].join(" "),
 };
 
-const MODEL_FLASH = process.env.GEMINI_MODEL_FLASH || "gemini-2.0-flash";
+const MODEL_FLASH = process.env.GEMINI_MODEL_FLASH || "gemini-1.5-flash";
 const DEFAULT_LOCATION = "Istanbul, Turkey";
+
+class QuotaExceededError extends Error {
+  constructor(provider: string, detail: string) {
+    super(`${provider} quota exceeded: ${detail}`);
+    this.name = "QuotaExceededError";
+  }
+}
 
 // Helper Functions
 function logEvent(level: "info" | "warn" | "error", event: string, data: Record<string, unknown> = {}) {
@@ -217,8 +224,13 @@ async function generateWithClaude(prompt: string): Promise<{ decision: HadeDecis
     });
 
     const data = await response.json();
+    if (!response.ok) {
+      logEvent("warn", "claude_generation_error", { status: response.status, error: data?.error });
+      return null;
+    }
     const rawText = data?.choices?.[0]?.message?.content ?? "";
     const parsed = safeParseDecision(rawText);
+    if (!parsed) logEvent("warn", "claude_parse_failed", { preview: rawText.slice(0, 200) });
     return parsed ? { decision: parsed, modelUsed: modelId } : null;
   } catch (error) {
     logEvent("error", "claude_fetch_failed", { error: String(error) });
@@ -272,22 +284,46 @@ async function generateWithGemini(client: GoogleGenerativeAI, prompt: string, mo
     if (!parsed) logEvent("warn", "gemini_parse_failed", { model: modelName, preview: rawText.slice(0, 200) });
     return parsed ? { decision: parsed, modelUsed: modelName } : null;
   } catch (error) {
-    logEvent("error", "gemini_fetch_failed", { model: modelName, error: String(error) });
+    const msg = String(error);
+    const isQuota = msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED");
+    logEvent(
+      isQuota ? "warn" : "error",
+      isQuota ? "gemini_quota_exceeded" : "gemini_fetch_failed",
+      { model: modelName, error: msg },
+    );
+    if (isQuota) throw new QuotaExceededError("gemini", msg);
     return null;
   }
 }
 
 function buildFallback(payload: Required<HadeRequestPayload>): HadeDecisionResponse {
+  const signalSnippet = payload.signal.trim().length > 0
+    ? payload.signal.slice(0, 55)
+    : "Explore nearby";
   return {
     primary: {
       keyword: "Discovery",
-      description: `Adaptive node detected near ${payload.location}.`,
+      description: `Signal noted: '${signalSnippet}' — adaptive node near ${payload.location}.`,
       subNode: "Karaköy",
     },
     alternatives: [],
     tags: ["fallback", payload.llmChoice, "safe-render"],
     urgency: "low",
     novelty: 0.5,
+  };
+}
+
+function buildQuotaBusy(payload: Required<HadeRequestPayload>): HadeDecisionResponse {
+  return {
+    primary: {
+      keyword: "System Busy",
+      description: `Gemini quota reached. Switch to Llama or Claude for your signal.`,
+      subNode: "Engine Relay",
+    },
+    alternatives: [],
+    tags: ["quota-exceeded", "system-busy", "retry-with-llama"],
+    urgency: "low",
+    novelty: 0,
   };
 }
 
@@ -326,7 +362,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(buildFallback(payload));
   }
   const client = new GoogleGenerativeAI(apiKey);
-  const result = await generateWithGemini(client, prompt, MODEL_FLASH);
-  if (!result) logEvent("warn", "gemini_generation_failed_using_fallback");
-  return NextResponse.json(result ? result.decision : buildFallback(payload));
+  try {
+    const result = await generateWithGemini(client, prompt, MODEL_FLASH);
+    if (!result) logEvent("warn", "gemini_generation_failed_using_fallback");
+    return NextResponse.json(result ? result.decision : buildFallback(payload));
+  } catch (error) {
+    if (error instanceof QuotaExceededError) {
+      logEvent("warn", "gemini_quota_exceeded_returning_busy");
+      return NextResponse.json(buildQuotaBusy(payload));
+    }
+    logEvent("error", "gemini_unhandled_error", { error: String(error) });
+    return NextResponse.json(buildFallback(payload));
+  }
 }
