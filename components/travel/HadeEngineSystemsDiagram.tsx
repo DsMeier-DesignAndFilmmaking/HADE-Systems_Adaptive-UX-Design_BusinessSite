@@ -575,13 +575,19 @@ function TacticalMapStep({ signal, generatedOutput, onRestart }: any) {
           <div className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-bold uppercase tracking-widest text-emerald-400">ISTANBUL LIVE</div>
         </div>
 
-        <motion.div initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full md:w-[400px] rounded-[2.5rem] bg-[#16181D] border border-white/10 p-8 shadow-2xl backdrop-blur-3xl">
-          <p className="text-lg font-medium leading-snug mb-8">HADE has activated the {generatedOutput.subNode} node based on your current signal.</p>
-          <div className="flex gap-4">
-            <button className="flex-[2] py-5 rounded-2xl bg-white text-ink font-black text-[11px] uppercase tracking-widest">Let's Go</button>
-            <button onClick={onRestart} className="flex-1 py-5 rounded-2xl bg-white/5 font-bold text-[11px] uppercase tracking-widest text-white/40">Exit</button>
-          </div>
-        </motion.div>
+        <motion.div
+initial={{ y: 40, opacity: 0 }}
+animate={{ y: 0, opacity: 1 }}
+  className="absolute bottom-10 right-10 w-[320px] rounded-[2rem] bg-[#16181D]/90 border border-white/10 p-6 shadow-2xl backdrop-blur-2xl"
+>
+  <p className="text-lg font-medium leading-snug mb-4">
+    HADE has activated the {generatedOutput.subNode} node based on your current signal.
+  </p>
+  <div className="flex gap-3">
+    <button className="flex-[2] py-3 rounded-2xl bg-white text-ink font-black text-[11px] uppercase tracking-widest">Let's Go</button>
+    <button onClick={onRestart} className="flex-1 py-3 rounded-2xl bg-white/5 font-bold text-[11px] uppercase tracking-widest text-white/40">Exit</button>
+  </div>
+</motion.div>
       </div>
     </div>
   );

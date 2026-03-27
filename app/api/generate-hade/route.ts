@@ -75,6 +75,7 @@ type HadeRequestPayload = {
   signal?: string;
   module?: string;
   location?: string;
+  model?: "gemini" | "llama" | "mock";
   llmChoice?: "gemini" | "llama" | "mock";
   userProfile?: UserProfile;
   currentMood?: Mood;
@@ -519,9 +520,10 @@ function normalizeIncomingPayload(body: unknown): Required<HadeRequestPayload> {
     typeof obj.location === "string" && compact(obj.location)
       ? compact(obj.location)
       : DEFAULT_LOCATION;
+  const llmChoiceRaw = obj.model ?? obj.llmChoice;
   const llmChoice =
-    obj.llmChoice === "gemini" || obj.llmChoice === "llama" || obj.llmChoice === "mock"
-      ? obj.llmChoice
+    llmChoiceRaw === "gemini" || llmChoiceRaw === "llama" || llmChoiceRaw === "mock"
+      ? llmChoiceRaw
       : "gemini";
 
   const profileInterests = toStringList(obj.userProfile?.interests).slice(0, 12);
@@ -820,6 +822,79 @@ async function generateWithGemini(
   return null;
 }
 
+async function generateWithGroq(
+  prompt: string,
+): Promise<{ decision: HadeDecisionResponse; modelUsed: string } | null> {
+  const modelId = "llama-3.3-70b-versatile";
+  logEvent("info", "groq_generation_attempt", { model: modelId });
+
+  try {
+    const response = await withTimeout(
+      fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: modelId,
+          messages: [
+            { role: "system", content: SYSTEM_INSTRUCTION },
+            { role: "user", content: prompt },
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.55,
+        }),
+      }),
+      PROVIDER_TIMEOUT_MS,
+      "groq",
+    );
+
+    const data = (await response.json().catch(() => null)) as {
+      choices?: { message?: { content?: string } }[];
+      error?: unknown;
+    } | null;
+
+    if (!response.ok) {
+      logEvent("warn", "groq_generation_error", {
+        model: modelId,
+        status: response.status,
+        error: data?.error,
+      });
+      return null;
+    }
+
+    const rawText = data?.choices?.[0]?.message?.content ?? "";
+    logEvent("info", "groq_generation_raw", {
+      model: modelId,
+      preview: truncate(rawText),
+    });
+
+    const parsed = safeParseDecision(rawText);
+    if (!parsed) {
+      logEvent("warn", "groq_parse_failed", {
+        model: modelId,
+        preview: truncate(rawText),
+      });
+      return null;
+    }
+
+    logEvent("info", "groq_generation_success", {
+      model: modelId,
+      tags: parsed.tags,
+      urgency: parsed.urgency,
+      novelty: parsed.novelty,
+    });
+    return { decision: parsed, modelUsed: modelId };
+  } catch (error) {
+    logEvent("warn", "groq_generation_error", {
+      model: modelId,
+      message: String(error),
+    });
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest) {
   logEvent("info", "request_received");
 
@@ -849,7 +924,15 @@ export async function POST(req: NextRequest) {
   });
 
   if (payload.llmChoice === "mock") {
-    const mockDecision = fallbackFromPayload(payload);
+    const mockDecision = {
+      primary: {
+        keyword: "Artisan",
+        description: "Local craft node detected near the Galata Tower.",
+        subNode: "Galata",
+      },
+      tags: ["offline", "demo-mode", "istanbul"],
+      urgency: "low",
+    };
     logEvent("info", "mock_mode_response_returned", {
       llmChoice: payload.llmChoice,
       primary: mockDecision.primary,
@@ -864,13 +947,40 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(fallbackFromPayload(payload), { status: 200 });
   }
 
-  try {
-    if (payload.llmChoice === "llama") {
-      logEvent("warn", "llama_mode_not_configured_using_gemini", {
-        llmChoice: payload.llmChoice,
-      });
+  if (payload.llmChoice === "llama") {
+    const groqKey = process.env.GROQ_API_KEY;
+    if (!groqKey) {
+      logEvent("error", "missing_groq_api_key");
+      return NextResponse.json(fallbackFromPayload(payload), { status: 200 });
     }
+    try {
+      const prompt = buildPrompt(payload);
+      logEvent("info", "prompt_built", {
+        preview: truncate(prompt, 700),
+        moduleTemplate: modulePromptBlock(payload.module),
+      });
+      const generated = await generateWithGroq(prompt);
+      if (generated) {
+        logEvent("info", "response_returned_groq", {
+          modelUsed: generated.modelUsed,
+          primary: generated.decision.primary,
+          tags: generated.decision.tags,
+        });
+        return NextResponse.json(generated.decision, { status: 200 });
+      }
+      const fallbackDecision = fallbackFromPayload(payload);
+      logEvent("warn", "response_returned_fallback_after_groq_failure", {
+        fallbackPrimary: fallbackDecision.primary,
+        fallbackTags: fallbackDecision.tags,
+      });
+      return NextResponse.json(fallbackDecision, { status: 200 });
+    } catch (error) {
+      logEvent("error", "groq_route_fatal_error", { error: String(error) });
+      return NextResponse.json(fallbackFromPayload(payload), { status: 200 });
+    }
+  }
 
+  try {
     const client = new GoogleGenerativeAI(apiKey);
     const discoveredModels = await listGeminiModels(client, apiKey);
 
