@@ -13,7 +13,6 @@ type HadeDecision = {
 type GeminiModelInfo = {
   name?: string;
   displayName?: string;
-  description?: string;
   version?: string;
   supportedGenerationMethods?: string[];
 };
@@ -34,12 +33,13 @@ const SYSTEM_INSTRUCTION = [
   "description must be one concise sentence.",
 ].join("\n");
 
+// Only supported, active models
 const MODEL_CANDIDATES = [
   process.env.GEMINI_MODEL,
-  "gemini-pro",
-  "gemini-1.5-flash",
-  "gemini-1.5-pro",
-].filter((value): value is string => Boolean(value?.trim()));
+  "gemini-2.5-flash",
+  "gemini-2.5-pro",
+  "gemini-pro-latest",
+].filter((v): v is string => Boolean(v?.trim()));
 
 function log(event: string, data?: Record<string, unknown>) {
   console.log(
@@ -47,22 +47,15 @@ function log(event: string, data?: Record<string, unknown>) {
       ts: new Date().toISOString(),
       event,
       ...(data || {}),
-    })}`,
+    })}`
   );
 }
 
 function logError(event: string, error: unknown, data?: Record<string, unknown>) {
   const errObj =
     error && typeof error === "object"
-      ? (error as {
-          message?: string;
-          status?: number;
-          code?: string | number;
-          name?: string;
-          stack?: string;
-        })
+      ? (error as { message?: string; name?: string; stack?: string })
       : { message: String(error) };
-
   console.error(
     `[generate-hade] ${JSON.stringify({
       ts: new Date().toISOString(),
@@ -71,26 +64,22 @@ function logError(event: string, error: unknown, data?: Record<string, unknown>)
       error: {
         name: errObj.name,
         message: errObj.message,
-        status: errObj.status,
-        code: errObj.code,
+        stack: errObj.stack,
       },
-    })}`,
+    })}`
   );
 }
 
-function compact(value: string) {
-  return value.replace(/\s+/g, " ").trim();
+function compact(str: string) {
+  return str.replace(/\s+/g, " ").trim();
 }
 
-function truncate(value: string, max = 300) {
-  if (value.length <= max) {
-    return value;
-  }
-  return `${value.slice(0, max)}...`;
+function truncate(str: string, max = 300) {
+  return str.length > max ? str.slice(0, max) + "..." : str;
 }
 
-function normalizeModelName(modelName: string) {
-  return modelName.replace(/^models\//, "");
+function normalizeModelName(name: string) {
+  return name.replace(/^models\//, "");
 }
 
 function buildPrompt(signal: string, moduleName: string, location: string) {
@@ -101,119 +90,66 @@ function buildPrompt(signal: string, moduleName: string, location: string) {
     '  "description": "string",',
     '  "subNode": "string"',
     "}",
-    "",
     `<signal>${signal}</signal>`,
     `<module>${moduleName}</module>`,
     `<location>${location}</location>`,
   ].join("\n");
 }
 
+// Extract JSON even if returned with markdown fences or extra text
 function extractJsonCandidate(raw: string): string | null {
   const trimmed = raw.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
-    return trimmed;
-  }
-
+  if (trimmed.startsWith("{") && trimmed.endsWith("}")) return trimmed;
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
-  if (fenced) {
-    return fenced.trim();
-  }
+  if (fenced) return fenced.trim();
 
   const firstBrace = trimmed.indexOf("{");
-  if (firstBrace === -1) {
-    return null;
-  }
+  if (firstBrace === -1) return null;
 
-  let depth = 0;
-  let inString = false;
-  let escaped = false;
-
-  for (let i = firstBrace; i < trimmed.length; i += 1) {
+  let depth = 0, inString = false, escaped = false;
+  for (let i = firstBrace; i < trimmed.length; i++) {
     const ch = trimmed[i];
-
     if (inString) {
-      if (escaped) {
-        escaped = false;
-      } else if (ch === "\\") {
-        escaped = true;
-      } else if (ch === '"') {
-        inString = false;
-      }
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
       continue;
     }
-
-    if (ch === '"') {
-      inString = true;
-      continue;
-    }
-
-    if (ch === "{") {
-      depth += 1;
-    } else if (ch === "}") {
-      depth -= 1;
-      if (depth === 0) {
-        return trimmed.slice(firstBrace, i + 1).trim();
-      }
+    if (ch === '"') { inString = true; continue; }
+    if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) return trimmed.slice(firstBrace, i + 1).trim();
     }
   }
-
   return null;
 }
 
 function validateDecision(data: unknown): data is HadeDecision {
-  if (!data || typeof data !== "object") {
-    return false;
-  }
-
-  const value = data as Record<string, unknown>;
-  return (
-    typeof value.keyword === "string" &&
-    typeof value.description === "string" &&
-    typeof value.subNode === "string" &&
-    value.keyword.trim().length > 0 &&
-    value.description.trim().length > 0 &&
-    value.subNode.trim().length > 0
-  );
+  if (!data || typeof data !== "object") return false;
+  const v = data as Record<string, unknown>;
+  return ["keyword", "description", "subNode"].every(k => typeof v[k] === "string" && v[k].trim().length > 0);
 }
 
-function safeParse(rawText: string): HadeDecision | null {
-  const candidate = extractJsonCandidate(rawText) || rawText;
-
+function safeParse(raw: string): HadeDecision | null {
+  const candidate = extractJsonCandidate(raw) || raw;
   try {
     const parsed = JSON.parse(candidate);
-    if (!validateDecision(parsed)) {
-      return null;
-    }
+    if (!validateDecision(parsed)) return null;
     return {
       keyword: compact(parsed.keyword).slice(0, 80),
       description: compact(parsed.description).slice(0, 280),
       subNode: compact(parsed.subNode).slice(0, 80),
     };
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
-function deterministicFallback(
-  signal: string,
-  moduleName: string,
-  location: string,
-): HadeDecision {
+function deterministicFallback(signal: string, moduleName: string, location: string): HadeDecision {
   const merged = `${signal} ${moduleName}`.toLowerCase();
   let keyword = "Adaptive Guidance";
-
-  if (/(activate|onboard|setup|start)/.test(merged)) {
-    keyword = "Activation Flow";
-  } else if (/(stuck|drop|friction|idle|confused)/.test(merged)) {
-    keyword = "Friction Recovery";
-  } else if (/(data|analytics|insight|dashboard)/.test(merged)) {
-    keyword = "Insight Mapping";
-  }
-
+  if (/(activate|onboard|setup|start)/.test(merged)) keyword = "Activation Flow";
+  else if (/(stuck|drop|friction|idle|confused)/.test(merged)) keyword = "Friction Recovery";
+  else if (/(data|analytics|insight|dashboard)/.test(merged)) keyword = "Insight Mapping";
   const subNode = compact(location) || FALLBACK_RESPONSE.subNode;
   return {
     keyword,
@@ -222,101 +158,31 @@ function deterministicFallback(
   };
 }
 
-async function listGeminiModels(
-  client: GoogleGenerativeAI,
-  apiKey: string,
-): Promise<GeminiModelInfo[]> {
-  const dynamicClient = client as unknown as {
-    listModels?: () => Promise<{ models?: GeminiModelInfo[] }>;
-  };
-
-  if (typeof dynamicClient.listModels === "function") {
-    try {
-      const response = await dynamicClient.listModels();
-      const models = response?.models || [];
-      log("gemini.list_models.sdk_success", {
-        count: models.length,
-      });
-      models.forEach((model, index) => {
-        log("gemini.model", {
-          index,
-          name: model.name,
-          displayName: model.displayName,
-          version: model.version,
-          supportedGenerationMethods: model.supportedGenerationMethods,
-        });
-      });
-      return models;
-    } catch (error) {
-      logError("gemini.list_models.sdk_failed", error);
-    }
-  } else {
-    log("gemini.list_models.sdk_unavailable");
-  }
-
-  const endpoint = "https://generativelanguage.googleapis.com/v1beta/models";
-
+async function listGeminiModels(client: GoogleGenerativeAI, apiKey: string): Promise<GeminiModelInfo[]> {
   try {
-    const response = await fetch(`${endpoint}?key=${encodeURIComponent(apiKey)}`, {
-      method: "GET",
-      cache: "no-store",
-    });
-
-    const payload = (await response.json().catch(() => null)) as
-      | { models?: GeminiModelInfo[]; error?: unknown }
-      | null;
-
-    if (!response.ok) {
-      log("gemini.list_models.rest_failed", {
-        status: response.status,
-        statusText: response.statusText,
-        payload,
-      });
-      return [];
-    }
-
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const payload = await response.json() as { models?: GeminiModelInfo[] };
     const models = payload?.models || [];
-    log("gemini.list_models.rest_success", {
-      endpoint,
-      count: models.length,
-    });
-    models.forEach((model, index) => {
-      log("gemini.model", {
-        index,
-        endpoint: model.name,
-        displayName: model.displayName,
-        version: model.version,
-        supportedGenerationMethods: model.supportedGenerationMethods,
-      });
-    });
-
+    log("gemini.list_models.rest_success", { count: models.length });
     return models;
   } catch (error) {
-    logError("gemini.list_models.rest_error", error, { endpoint });
+    logError("gemini.list_models.failed", error);
     return [];
   }
 }
 
 function selectModel(models: GeminiModelInfo[]) {
   const available = new Set(
-    models
-      .filter((model) => model.supportedGenerationMethods?.includes("generateContent"))
-      .map((model) => normalizeModelName(model.name || ""))
-      .filter(Boolean),
+    models.filter(m => m.supportedGenerationMethods?.includes("generateContent"))
+          .map(m => normalizeModelName(m.name || ""))
+          .filter(Boolean)
   );
-
   for (const candidate of MODEL_CANDIDATES) {
     const normalized = normalizeModelName(candidate);
-    if (available.size === 0 || available.has(normalized)) {
-      return normalized;
-    }
+    if (available.has(normalized)) return normalized;
   }
-
-  if (available.size > 0) {
-    return Array.from(available)[0];
-  }
-
-  return "gemini-pro";
+  return Array.from(available)[0] || "gemini-pro";
 }
 
 export async function POST(req: NextRequest) {
@@ -329,71 +195,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(FALLBACK_RESPONSE, { status: 200 });
     }
 
-    let body: unknown = {};
-    try {
-      body = await req.json();
-    } catch (error) {
-      logError("request_body_parse_failed", error);
-    }
+    let body: any = {};
+    try { body = await req.json(); } catch (err) { logError("request_body_parse_failed", err); }
 
-    log("request_body", {
-      bodyPreview: truncate(JSON.stringify(body ?? {})),
-    });
+    log("request_body", { bodyPreview: truncate(JSON.stringify(body || {})) });
 
-    const payload = (body && typeof body === "object" ? body : {}) as Record<
-      string,
-      unknown
-    >;
-
-    const signal =
-      typeof payload.signal === "string" && compact(payload.signal)
-        ? compact(payload.signal)
-        : "Open to anything";
-    const moduleName =
-      typeof payload.module === "string" && compact(payload.module)
-        ? compact(payload.module)
-        : "General exploration";
-    const location =
-      typeof payload.location === "string" && compact(payload.location)
-        ? compact(payload.location)
-        : "Istanbul";
+    const signal = compact(body.signal ?? "Open to anything");
+    const moduleName = compact(body.module ?? "General exploration");
+    const location = compact(body.location ?? "Istanbul");
 
     log("request_normalized", { signal, moduleName, location });
 
     const client = new GoogleGenerativeAI(apiKey);
-    const modelList = await listGeminiModels(client, apiKey);
-    const selectedModel = selectModel(modelList);
+    const models = await listGeminiModels(client, apiKey);
+    const selectedModel = selectModel(models);
 
     log("gemini.model_selected", { selectedModel });
 
     const model = client.getGenerativeModel({
       model: selectedModel,
       systemInstruction: SYSTEM_INSTRUCTION,
-      generationConfig: {
-        responseMimeType: "application/json",
-        temperature: 0.4,
-      },
+      generationConfig: { responseMimeType: "application/json", temperature: 0.4 },
     });
 
     const prompt = buildPrompt(signal, moduleName, location);
-    log("gemini.generate_start", {
-      model: selectedModel,
-      promptPreview: truncate(prompt),
-    });
+    log("gemini.generate_start", { model: selectedModel, promptPreview: truncate(prompt) });
 
     const result = await model.generateContent(prompt);
     const rawText = result?.response?.text?.() || "";
 
-    log("gemini.generate_response", {
-      model: selectedModel,
-      rawPreview: truncate(rawText),
-    });
+    log("gemini.generate_response", { model: selectedModel, rawPreview: truncate(rawText) });
 
     const parsed = safeParse(rawText);
-    log("gemini.parse_result", {
-      success: Boolean(parsed),
-      parsed,
-    });
+    log("gemini.parse_result", { success: Boolean(parsed), parsed });
 
     if (parsed) {
       log("response_path_gemini_success", { model: selectedModel });
@@ -403,6 +237,7 @@ export async function POST(req: NextRequest) {
     const fallback = deterministicFallback(signal, moduleName, location);
     log("response_path_fallback_parse_failed", { fallback });
     return NextResponse.json(fallback, { status: 200 });
+
   } catch (error) {
     logError("route_unhandled_error", error);
     log("response_path_fallback_exception");
