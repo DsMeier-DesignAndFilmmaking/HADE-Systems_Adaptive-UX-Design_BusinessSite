@@ -36,7 +36,9 @@ function UnifiedInputStep({ accent, signal, setSignal, onNext }: any) {
           <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-40">Intelligence Input</span>
         </div>
         <h3 className="mt-4 text-3xl font-semibold tracking-tight text-ink">Listen & Anchor</h3>
-        <p className="mt-2 text-sm leading-relaxed text-ink/50 md:max-w-xs">Describe your vibe and verify your city coordinates.</p>
+        <p className="mt-2 text-sm leading-relaxed text-ink/50 md:max-w-2xl">
+          Describe your vibe and verify your city coordinates.
+        </p>
 
         <div className="mt-10 space-y-6">
           <textarea
@@ -143,23 +145,26 @@ function ResultStep({ accent, onRestart }: any) {
   );
 }
 
-/* --- 3. Main Controller with Site-Matching Container --- */
-
-/* --- Main Controller with Edge-to-Edge Horizontal Alignment --- */
+/* --- 3. Main Controller with Development Note --- */
 
 export default function HadeEngineSystemsDiagram({ accent = "#000000" }: { accent?: string }) {
   const [step, setStep] = useState<StepId>("input");
   const [signal, setSignal] = useState<SignalState>(DEFAULT_SIGNAL);
 
   return (
-    /* OUTER SECTION: No horizontal padding */
     <section className="w-full py-12 md:py-24">
-      {/* CONTAINER: Set to max-w-7xl to match your page's content edge. 
-         Removed px-6 for edge-to-edge alignment. 
-      */}
       <div className="mx-auto max-w-7xl w-full">
         
-        {/* INNER WRAPPER: Forced to 100% width with no max-width constraints */}
+        {/* Development Status Note */}
+        <div className="mb-8 flex items-center justify-center">
+          <div className="flex items-center gap-3 rounded-full border border-ink/5 bg-ink/[0.02] px-5 py-2">
+            <div className="flex h-4 w-4 items-center justify-center rounded-full bg-ink/10 text-[10px] font-bold">i</div>
+            <p className="text-[11px] font-medium tracking-tight text-ink/40">
+              <strong>Interactive Prototype Concept:</strong> Simulation only. Real-time HADE API integration for this study is currently in progress.
+            </p>
+          </div>
+        </div>
+
         <div className="w-full">
           <AnimatePresence mode="wait">
             <motion.div
@@ -193,7 +198,7 @@ export default function HadeEngineSystemsDiagram({ accent = "#000000" }: { accen
             </motion.div>
           </AnimatePresence>
 
-          {/* Pagination Indicators - Vertical spacing maintained */}
+          {/* Pagination Indicators */}
           <div className="mt-10 flex justify-center gap-2">
             {(["input", "processing", "result"] as StepId[]).map((s) => (
               <div 

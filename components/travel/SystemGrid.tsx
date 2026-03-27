@@ -31,7 +31,7 @@ export default function SystemGrid({ items, accent = "#0891B2" }: SystemGridProp
               {tag}
             </p>
           )}
-          <p className="text-sm font-semibold text-ink mb-2">{title}</p>
+          <p className="text-base font-semibold tracking-tight text-ink mb-2">{title}</p>
           <p className="text-sm text-ink/60 leading-relaxed">{body}</p>
         </div>
       ))}

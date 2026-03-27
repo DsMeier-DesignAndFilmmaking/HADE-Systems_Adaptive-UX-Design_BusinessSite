@@ -1,3 +1,5 @@
 {
-  "/case-studies/travel/page": "app/case-studies/travel/page.js"
+  "/page": "app/page.js",
+  "/case-studies/page": "app/case-studies/page.js",
+  "/case-studies/saas/page": "app/case-studies/saas/page.js"
 }

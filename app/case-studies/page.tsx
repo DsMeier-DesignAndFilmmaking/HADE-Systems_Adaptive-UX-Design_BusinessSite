@@ -17,24 +17,24 @@ const CASE_STUDIES = [
     description:
       "Travel tools are built for planning. But travel happens in real time — context shifts, plans break, and decisions need to be made in the field. This system reads live location, movement, and behavioral signals to surface the best next move at each moment.",
     metric: "Outcome: context-aware real-time guidance across four in-field user states",
-    tag: "Travel · Concept Build",
+    tag: "Travel",
     href: "/case-studies/travel",
   },
   {
-    title: "Activation Recovery: Onboarding Redesign for B2B SaaS",
+    title: "Adaptive Purchase Decision Engine",
     description:
-      "The onboarding flow treated every user identically — ignoring hesitation signals, role context, and intent depth. No decision logic. No adaptive routing. Users hit friction early and never reached the activation moment.",
-    metric: "Modeled outcome: faster time-to-value, measurable activation lift",
-    tag: "Activation · Adaptive UX Sprint",
-    href: "/case-studies/activation",
+      "Large catalogs create option overload: too many choices, no decision support, and no adaptive prioritization. This concept build detects browsing state in real time and restructures the purchase environment to reduce noise and improve confidence.",
+    metric: "Modeled outcome: faster decision speed and measurable conversion lift",
+    tag: "E-Commerce",
+    href: "/case-studies/ecommerce",
   },
   {
-    title: "Retention System: Post-Activation Drop-Off in a PLG Analytics Tool",
+    title: "Adaptive Workflow & Activation System",
     description:
       "Users reached initial value but disengaged before it compounded. The product had no mechanism to detect drift, no context-aware re-engagement, and no feedback loop between behavior and interface response. Retention was left to chance.",
-    metric: "Modeled outcome: reduced churn window, improved week-4 engagement depth",
-    tag: "Retention · Adaptive Module",
-    href: "/case-studies/retention",
+    metric: "Modeled outcome: increased activation, improved retention, reduced confusion",
+    tag: "SaaS",
+    href: "/case-studies/saas",
   },
   {
     title: "End-to-End Adaptive UX System Design",

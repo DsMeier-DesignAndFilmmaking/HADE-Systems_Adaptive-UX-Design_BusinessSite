@@ -2,6 +2,7 @@ import type { Config } from "tailwindcss";
 
 const config: Config = {
   content: ["./app/**/*.{js,ts,jsx,tsx,mdx}", "./components/**/*.{js,ts,jsx,tsx,mdx}", "./lib/**/*.{js,ts,jsx,tsx,mdx}"],
+  safelist: ["text-ink", "text-ink/40", "text-ink/45", "text-ink/50", "text-ink/55", "text-ink/60", "text-ink/65", "text-ink/70"],
   theme: {
     extend: {
       colors: {

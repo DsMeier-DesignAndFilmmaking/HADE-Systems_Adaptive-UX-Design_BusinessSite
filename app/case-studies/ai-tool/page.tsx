@@ -68,8 +68,8 @@ export default function Page() {
             <p className="text-sm font-medium mb-4">Related Case Studies</p>
             <div className="grid gap-3 sm:grid-cols-2">
               {[
-                { href: "/case-studies/activation", label: "Activation Recovery", hook: "Real-time intent classification that routes B2B SaaS users to the fastest path to their first value moment." },
-                { href: "/case-studies/retention", label: "Retention System", hook: "Behavior-triggered engagement that detects drift and responds before churn occurs — 38% to 54% week-4 retention." },
+                { href: "/case-studies/ecommerce", label: "E-Commerce", hook: "Real-time intent classification that routes B2B SaaS users to the fastest path to their first value moment." },
+                { href: "/case-studies/saas", label: "SaaS · Concept Build", hook: "Behavior-triggered engagement that detects drift and responds before churn occurs — 38% to 54% week-4 retention." },
                 { href: "/case-studies/travel", label: "Adaptive Trip Discovery", hook: "Live context classification that replaces static travel plans with real-time in-field guidance across four user states." },
                 { href: "/case-studies/system", label: "Adaptive System Lab", hook: "A unified behavioral layer that connects onboarding, usage, and retention as a single adaptive system." },
               ].map(({ href, label, hook }) => (

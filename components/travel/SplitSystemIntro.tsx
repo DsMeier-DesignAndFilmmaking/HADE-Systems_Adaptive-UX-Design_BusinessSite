@@ -30,7 +30,8 @@ export default function SplitSystemIntro({
         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-2">
           {left.label}
         </p>
-        <p className="text-sm font-semibold text-ink mb-2">{left.heading}</p>
+        {/* Updated to text-md */}
+        <p className="text-md font-semibold text-ink mb-2">{left.heading}</p>
         <p className="text-sm text-ink/60 leading-relaxed">{left.body}</p>
       </div>
 
@@ -48,7 +49,8 @@ export default function SplitSystemIntro({
         >
           {right.label}
         </p>
-        <p className="text-sm font-semibold text-ink mb-2">{right.heading}</p>
+        {/* Updated to text-md */}
+        <p className="text-md font-semibold text-ink mb-2">{right.heading}</p>
         <p className="text-sm text-ink/60 leading-relaxed">{right.body}</p>
       </div>
     </div>

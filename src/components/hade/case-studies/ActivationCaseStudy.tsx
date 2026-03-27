@@ -13,7 +13,7 @@ export default function ActivationCaseStudy() {
         }}
         aria-hidden
       />
-      <FlagshipCaseStudyCard study={flagshipCaseStudy} href="/case-studies/activation" />
+      <FlagshipCaseStudyCard study={flagshipCaseStudy} href="/case-studies/ecommerce" />
     </div>
   );
 }

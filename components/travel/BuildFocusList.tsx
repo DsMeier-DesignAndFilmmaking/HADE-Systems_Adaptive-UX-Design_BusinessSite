@@ -36,7 +36,7 @@ export default function BuildFocusList({
               style={{ background: accent, opacity: 0.55 }}
             />
             <div>
-              <p className="text-sm font-semibold text-ink mb-1">{itemLabel}</p>
+              <p className="text-base font-semibold tracking-tight text-ink mb-1">{itemLabel}</p>
               <p className="text-sm text-ink/60 leading-relaxed">{detail}</p>
             </div>
           </div>

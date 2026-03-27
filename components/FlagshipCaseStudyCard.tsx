@@ -283,7 +283,7 @@ export function FlagshipCaseStudyCard({
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
       {study.problemStats.map(({ stat, label }) => (
         <div key={stat} className="rounded-lg border border-line/60 bg-white/40 p-4 flex flex-col gap-2">
-          <h3 className="text-sm font-semibold text-ink">{stat}</h3>
+          <h3 className="text-base font-semibold tracking-tight text-ink">{stat}</h3>
           <p className="text-sm text-ink/60 leading-relaxed">{label}</p>
         </div>
       ))}
@@ -317,7 +317,7 @@ export function FlagshipCaseStudyCard({
         {/* Pillar Header */}
         <div className="flex items-center gap-2 mb-4">
           <span style={{ color }}>{PILLAR_ICONS[i]}</span>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink/60">
+          <p className="text-base font-semibold tracking-tight text-ink/60">
             {title}
           </p>
         </div>

@@ -55,8 +55,8 @@ export default function Page() {
           <p className="text-sm font-medium mb-4">Related Case Studies</p>
           <div className="grid gap-3 sm:grid-cols-2">
             {[
-              { href: "/case-studies/activation", label: "Activation Recovery", hook: "Adaptive onboarding that classifies user intent in real time and routes each user to the fastest path to value." },
-              { href: "/case-studies/retention", label: "Retention System", hook: "State-based engagement tracking with behavioral triggers — 38% to 54% week-4 retention." },
+              { href: "/case-studies/ecommerce", label: "E-Commerce", hook: "Adaptive onboarding that classifies user intent in real time and routes each user to the fastest path to value." },
+              { href: "/case-studies/saas", label: "SaaS", hook: "State-based engagement tracking with behavioral triggers — 38% to 54% week-4 retention." },
             ].map(({ href, label, hook }) => (
               <Link key={href} href={href} className="group rounded-xl border border-line bg-white/60 px-5 py-4 hover:border-ink/20 transition-colors">
                 <p className="text-sm font-semibold text-ink mb-1">{label} →</p>

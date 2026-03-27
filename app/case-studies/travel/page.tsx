@@ -177,7 +177,7 @@ export default function Page() {
                     border: "1px solid rgba(11,13,18,0.08)",
                   }}
                 >
-                  <h3 className="text-sm font-semibold text-ink mb-2 leading-snug">{headline}</h3>
+                  <h3 className="text-base font-semibold tracking-tight text-ink mb-2 leading-snug">{headline}</h3>
                   <p className="text-sm text-ink/60 leading-relaxed">{body}</p>
                 </div>
               ))}
@@ -205,7 +205,7 @@ export default function Page() {
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-4">
               System in Action
             </p>
-            <p className="text-sm text-ink/55 leading-relaxed mb-5">
+            <p className="text-md text-ink/55 leading-relaxed mb-5">
               The full UX decision loop: Field Notes modules, HADE signal ingestion, adaptive panels, and recommendation output.
             </p>
             <SystemGrid items={SYSTEM_ITEMS} accent={ACCENT} />
@@ -219,7 +219,7 @@ export default function Page() {
         <Reveal delay={240}>
           <section className="mb-12">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-6">
-              Current Reality
+              Current Status
             </p>
             <div className="grid gap-3 sm:grid-cols-3">
               {CURRENT_REALITY.map(({ headline, body }) => (
@@ -231,7 +231,7 @@ export default function Page() {
                     border: "1px solid rgba(11,13,18,0.08)",
                   }}
                 >
-                  <h3 className="text-sm font-semibold text-ink mb-2 leading-snug">{headline}</h3>
+                  <h3 className="text-base font-semibold tracking-tight text-ink mb-2 leading-snug">{headline}</h3>
                   <p className="text-sm text-ink/60 leading-relaxed">{body}</p>
                 </div>
               ))}
@@ -304,8 +304,8 @@ export default function Page() {
             <div className="grid gap-3 sm:grid-cols-2">
               {[
                 {
-                  href: "/case-studies/activation",
-                  label: "Activation Recovery",
+                  href: "/case-studies/ecommerce",
+                  label: "E-Commerce",
                   hook: "Real-time intent classification that routes B2B SaaS users to the fastest path to their first value moment.",
                 },
                 {
@@ -314,8 +314,8 @@ export default function Page() {
                   hook: "Task-stage classification that replaces the blank slate with structured scaffolding matched to where the user is in their workflow.",
                 },
                 {
-                  href: "/case-studies/retention",
-                  label: "Retention System",
+                  href: "/case-studies/saas",
+                  label: "SaaS",
                   hook: "Behavior-triggered engagement that detects drift and responds before churn occurs.",
                 },
                 {
