@@ -574,6 +574,7 @@ function normalizeIncomingPayload(body: unknown): Required<HadeRequestPayload> {
     signal,
     module: moduleName,
     location,
+    model: llmChoice,
     llmChoice,
     userProfile: {
       interests: profileInterests,
