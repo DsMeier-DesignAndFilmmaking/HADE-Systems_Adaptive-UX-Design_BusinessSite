@@ -1,1 +1,22 @@
-{"pages":{},"app":{"/Users/danielmeier/Documents/GitHub/HADE Systems_Adaptive UX Design/app/layout":[]},"appUsingSizeAdjust":true,"pagesUsingSizeAdjust":false}
+{
+  "app": {
+    "[project]/app/_not-found/page": [],
+    "[project]/app/about/page": [],
+    "[project]/app/adaptive-ux-sprint/page": [],
+    "[project]/app/brand/page": [],
+    "[project]/app/case-studies/activation/page": [],
+    "[project]/app/case-studies/ai-tool/page": [],
+    "[project]/app/case-studies/ecommerce/page": [],
+    "[project]/app/case-studies/page": [],
+    "[project]/app/case-studies/retention/page": [],
+    "[project]/app/case-studies/saas/page": [],
+    "[project]/app/case-studies/travel/page": [],
+    "[project]/app/contact/page": [],
+    "[project]/app/how-it-works/page": [],
+    "[project]/app/page": [],
+    "[project]/app/services/page": []
+  },
+  "appUsingSizeAdjust": true,
+  "pages": {},
+  "pagesUsingSizeAdjust": false
+}

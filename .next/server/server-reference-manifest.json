@@ -1,5 +1,18 @@
 {
-  "node": {},
+  "node": {
+    "40435c611098aabae152a4dc327122dfc38216287e": {
+      "workers": {
+        "app/contact/page": {
+          "moduleId": 4610,
+          "async": false,
+          "exportedName": "$$RSC_SERVER_ACTION_0",
+          "filename": "app/contact/page.tsx"
+        }
+      },
+      "filename": "app/contact/page.tsx",
+      "exportedName": "$$RSC_SERVER_ACTION_0"
+    }
+  },
   "edge": {},
-  "encryptionKey": "RuF2JO1f0qw92coRIVn5Y4JnXuWfIXvVnf43fMByriE="
+  "encryptionKey": "VzRxfvQafg1KVbsjGMgbqgTrOPfwO4kXcISifKlpkeY="
 }

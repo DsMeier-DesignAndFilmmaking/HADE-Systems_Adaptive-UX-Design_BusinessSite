@@ -3,7 +3,7 @@
 
 type AppRoutes = "/" | "/about" | "/adaptive-ux-sprint" | "/brand" | "/case-studies" | "/case-studies/activation" | "/case-studies/ai-tool" | "/case-studies/ecommerce" | "/case-studies/retention" | "/case-studies/saas" | "/case-studies/travel" | "/contact" | "/how-it-works" | "/services"
 type AppRouteHandlerRoutes = "/api/generate-hade"
-type PageRoutes = "/_app" | "/_error"
+type PageRoutes = never
 type LayoutRoutes = "/"
 type RedirectRoutes = never
 type RewriteRoutes = never
@@ -12,8 +12,6 @@ type Routes = AppRoutes | PageRoutes | LayoutRoutes | RedirectRoutes | RewriteRo
 
 interface ParamMap {
   "/": {}
-  "/_app": {}
-  "/_error": {}
   "/about": {}
   "/adaptive-ux-sprint": {}
   "/api/generate-hade": {}
