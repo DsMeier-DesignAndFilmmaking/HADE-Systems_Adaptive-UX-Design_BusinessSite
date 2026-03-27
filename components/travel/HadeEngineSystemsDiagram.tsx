@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { MapPin } from "lucide-react";
 import { GoogleMap, OverlayView, useJsApiLoader } from "@react-google-maps/api";
@@ -290,7 +290,7 @@ function UnifiedInputStep({ signal, setSignal, onNext, isLoading }: any) {
   );
 }
 
-function ProcessingStep({ signal, onComplete }: any) {
+const ProcessingStep = React.memo(function ProcessingStep({ signal, onComplete }: any) {
   const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
   useEffect(() => { const t = setTimeout(onComplete, 3200); return () => clearTimeout(t); }, [onComplete]);
 
@@ -319,7 +319,7 @@ function ProcessingStep({ signal, onComplete }: any) {
       </div>
     </div>
   );
-}
+});
 
 function ResultStep({ signal, generatedOutput, onRestart, onGo }: any) {
   const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
@@ -604,6 +604,14 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
   const [isLoading, setIsLoading] = useState(false);
   const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
 
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
+
+  const handleTimerComplete = useCallback(() => setTimerDone(true), []);
+
   // Gate: advance to result only when both the 3.2s mask and the API call are done
 // Force the transition whenever both conditions are met
 useEffect(() => {
@@ -697,13 +705,19 @@ useEffect(() => {
         signal.combinedSignal,
       );
       console.log("FINAL MAPPED DATA:", parsedCardData);
-      setGeneratedOutput(parsedCardData);
+      if (isMountedRef.current) {
+        setGeneratedOutput(() => parsedCardData);
+      }
     } catch (error) {
       console.error("[HADE Demo] Failed to generate decision", error);
-      setGeneratedOutput(buildClientFallback(signal.moduleContext, signal.combinedSignal));
+      if (isMountedRef.current) {
+        setGeneratedOutput(() => buildClientFallback(signal.moduleContext, signal.combinedSignal));
+      }
     } finally {
-      setDataReady(true);
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setDataReady(true);
+        setIsLoading(false);
+      }
     }
   };
 
@@ -736,7 +750,7 @@ useEffect(() => {
       <AnimatePresence mode="wait" initial={false}>
         <motion.div key={step} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.6, ease: [0.19, 1, 0.22, 1] }}>
           {step === "input" && <UnifiedInputStep signal={signal} setSignal={setSignal} onNext={handleExplore} isLoading={isLoading} />}
-          {step === "processing" && <ProcessingStep signal={signal} onComplete={() => setTimerDone(true)} />}
+          {step === "processing" && <ProcessingStep signal={signal} onComplete={handleTimerComplete} />}
           {step === "result" && <ResultStep signal={signal} generatedOutput={safeOutput} onRestart={restart} onGo={() => setStep("mapping")} />}
           {step === "mapping" && <TacticalMapStep signal={signal} generatedOutput={safeOutput} onRestart={restart} />}
         </motion.div>
