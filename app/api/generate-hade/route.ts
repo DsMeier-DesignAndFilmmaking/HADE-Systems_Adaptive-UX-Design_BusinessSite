@@ -75,6 +75,7 @@ type HadeRequestPayload = {
   signal?: string;
   module?: string;
   location?: string;
+  llmChoice?: "gemini" | "llama" | "mock";
   userProfile?: UserProfile;
   currentMood?: Mood;
   travelConstraints?: TravelConstraints;
@@ -518,6 +519,10 @@ function normalizeIncomingPayload(body: unknown): Required<HadeRequestPayload> {
     typeof obj.location === "string" && compact(obj.location)
       ? compact(obj.location)
       : DEFAULT_LOCATION;
+  const llmChoice =
+    obj.llmChoice === "gemini" || obj.llmChoice === "llama" || obj.llmChoice === "mock"
+      ? obj.llmChoice
+      : "gemini";
 
   const profileInterests = toStringList(obj.userProfile?.interests).slice(0, 12);
   const profilePastActions = toStringList(obj.userProfile?.pastActions).slice(0, 20);
@@ -567,6 +572,7 @@ function normalizeIncomingPayload(body: unknown): Required<HadeRequestPayload> {
     signal,
     module: moduleName,
     location,
+    llmChoice,
     userProfile: {
       interests: profileInterests,
       pastActions: profilePastActions,
@@ -833,6 +839,7 @@ export async function POST(req: NextRequest) {
     signal: payload.signal,
     module: payload.module,
     location: payload.location,
+    llmChoice: payload.llmChoice,
     mood: payload.currentMood,
     interestsCount: payload.userProfile.interests?.length || 0,
     pastActionsCount: payload.userProfile.pastActions?.length || 0,
@@ -841,6 +848,16 @@ export async function POST(req: NextRequest) {
     engagementMetrics: payload.engagementMetrics,
   });
 
+  if (payload.llmChoice === "mock") {
+    const mockDecision = fallbackFromPayload(payload);
+    logEvent("info", "mock_mode_response_returned", {
+      llmChoice: payload.llmChoice,
+      primary: mockDecision.primary,
+      tags: mockDecision.tags,
+    });
+    return NextResponse.json(mockDecision, { status: 200 });
+  }
+
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     logEvent("error", "missing_gemini_api_key");
@@ -848,6 +865,12 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    if (payload.llmChoice === "llama") {
+      logEvent("warn", "llama_mode_not_configured_using_gemini", {
+        llmChoice: payload.llmChoice,
+      });
+    }
+
     const client = new GoogleGenerativeAI(apiKey);
     const discoveredModels = await listGeminiModels(client, apiKey);
 

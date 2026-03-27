@@ -3,9 +3,12 @@
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { MapPin } from "lucide-react";
+import { GoogleMap, OverlayView, useJsApiLoader } from "@react-google-maps/api";
+
 
 /* --- 1. Enhanced HADE Types & Theme --- */
 type StepId = "input" | "processing" | "result" | "mapping";
+type LlmChoice = "gemini" | "llama" | "mock";
 
 type ModuleContext = "weather-vibe" | "expert-network" | "mood-journey" | "meet-someone" | "the-wildcard";
 
@@ -13,6 +16,7 @@ interface SignalState {
   combinedSignal: string;
   moduleContext: ModuleContext;
   location: string;
+  llmChoice: LlmChoice;
 }
 
 // 1. Define the Interface
@@ -24,6 +28,7 @@ const DEFAULT_SIGNAL: SignalState = {
   combinedSignal: "",
   moduleContext: "weather-vibe",
   location: "Istanbul, Turkey",
+  llmChoice: "gemini",
 };
 
 interface GeneratedOutput {
@@ -79,7 +84,7 @@ const MODULE_THEMES: Record<ModuleContext, {
     resultTitle: "Someone You Should Meet",
     baseDesc: "A verified contact from your extended network is flagged as a high-signal intro window.",
     tagline: "Trusted Connections",
-    action: "Say Hello"
+    action: "Go Connect"
   },
   "mood-journey": { 
     primary: "#F43F5E", 
@@ -138,7 +143,89 @@ const extractHighSignalWord = (input: string): string => {
   return word.charAt(0).toUpperCase() + word.slice(1);
 };
 
+const ISTANBUL_CENTER = { lat: 41.0082, lng: 28.9784 };
+
+const GOOGLE_MAP_DARK_STYLE: any[] = [
+  { elementType: "geometry", stylers: [{ color: "#0A0C10" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#0A0C10" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#6b7280" }] },
+  { featureType: "administrative", elementType: "labels", stylers: [{ visibility: "off" }] },
+  { featureType: "poi", stylers: [{ visibility: "off" }] },
+  { featureType: "poi.park", stylers: [{ visibility: "off" }] },
+  { featureType: "road", stylers: [{ visibility: "off" }] },
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#111827" }] },
+  { featureType: "landscape", elementType: "geometry", stylers: [{ color: "#0A0C10" }] },
+];
+
+const ISTANBUL_NODE_COORDS: Record<string, { lat: number; lng: number }> = {
+  karakoy: { lat: 41.0259, lng: 28.9776 },
+  kadikoy: { lat: 40.9901, lng: 29.0289 },
+  "nişantaşı": { lat: 41.0505, lng: 28.9927 },
+  nisantasi: { lat: 41.0505, lng: 28.9927 },
+  bebek: { lat: 41.0766, lng: 29.0439 },
+  cihangir: { lat: 41.0317, lng: 28.9854 },
+  moda: { lat: 40.9869, lng: 29.0252 },
+  besiktas: { lat: 41.0422, lng: 29.0083 },
+  galata: { lat: 41.0256, lng: 28.9741 },
+  beyoglu: { lat: 41.0369, lng: 28.9851 },
+};
+
+const LLM_OPTIONS: Array<{ id: LlmChoice; label: string; detail: string }> = [
+  { id: "gemini", label: "Gemini", detail: "Google Deep Reasoning" },
+  { id: "llama", label: "Llama", detail: "Open Strategy Layer" },
+  { id: "mock", label: "Mock", detail: "Deterministic Fallback" },
+];
+
 /* --- 3. UI Sub-Components --- */
+
+function EngineSettings({ signal, setSignal }: any) {
+  return (
+    <div className="mt-6 rounded-2xl border border-ink/10 bg-white/70 p-3">
+      <p className="mb-2 px-2 text-[10px] font-black uppercase tracking-[0.2em] text-ink/40">
+        Neural Backbone
+      </p>
+      <div className="grid grid-cols-3 gap-2">
+        {LLM_OPTIONS.map((option) => {
+          const active = signal.llmChoice === option.id;
+          return (
+            <button
+              key={option.id}
+              onClick={() =>
+                setSignal((p: SignalState) => ({ ...p, llmChoice: option.id }))
+              }
+              className="relative overflow-hidden rounded-xl border border-ink/10 px-3 py-3 text-left"
+            >
+              {active && (
+                <motion.div
+                  layoutId="active-pill"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  className="absolute inset-0 rounded-xl bg-ink text-white"
+                />
+              )}
+              <div className="relative z-10">
+                <p
+                  className={`text-[11px] font-black uppercase tracking-widest ${
+                    active ? "text-white" : "text-ink/70"
+                  }`}
+                >
+                  {option.label}
+                </p>
+                <p
+                  className={`mt-1 text-[9px] font-bold uppercase tracking-[0.14em] ${
+                    active ? "text-white/60" : "text-ink/30"
+                  }`}
+                >
+                  {option.detail}
+                </p>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function UnifiedInputStep({ signal, setSignal, onNext, isLoading }: any) {
   const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
@@ -186,6 +273,8 @@ function UnifiedInputStep({ signal, setSignal, onNext, isLoading }: any) {
             </div>
           </div>
         </div>
+
+        <EngineSettings signal={signal} setSignal={setSignal} />
       </div>
       <div className="mt-8 flex justify-end">
         <button
@@ -219,7 +308,13 @@ function ProcessingStep({ signal, onComplete }: any) {
               <motion.div initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: 3 }} className="h-full" style={{ background: theme.primary }} />
             </div>
           </div>
-          <p className="text-center text-[10px] font-bold text-ink/30 uppercase tracking-[0.3em]">Orchestrating Vector for: [{signal.combinedSignal.split(' ').slice(0, 5).join(' ')}{signal.combinedSignal.split(' ').length > 5 ? '...' : ''}]</p>
+          <p className="text-center text-[10px] font-bold text-ink/30 uppercase tracking-[0.3em]">
+            Routing {signal.llmChoice} Vector...
+          </p>
+          <p className="text-center text-[10px] font-bold text-ink/20 uppercase tracking-[0.2em]">
+            [{signal.combinedSignal.split(' ').slice(0, 5).join(' ')}
+            {signal.combinedSignal.split(' ').length > 5 ? "..." : ""}]
+          </p>
         </div>
       </div>
     </div>
@@ -264,22 +359,32 @@ function ResultStep({ signal, generatedOutput, onRestart, onGo }: any) {
   );
 }
 
-function TacticalMapStep({ signal, generatedOutput, onRestart }: any) {
-  const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
-  
+function VectorMapFallback({ theme, generatedOutput, onRestart, reason }: any) {
   return (
     <div className="relative flex min-h-[600px] flex-col overflow-hidden rounded-[3rem] bg-[#0A0C10] text-white border border-white/5">
       <div className="absolute inset-0 opacity-40">
         <svg width="100%" height="100%">
           <rect width="100%" height="100%" fill={`radial-gradient(circle, ${theme.primary}22 0%, transparent 70%)`} />
           {[...Array(6)].map((_, i) => (
-            <motion.path 
-              key={i} initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: 1, opacity: 0.15 }} transition={{ duration: 2, delay: i * 0.2 }}
-              d={`M ${400 + (Math.random()-0.5)*400} ${300 + (Math.random()-0.5)*300} L 400 300`}
-              stroke="white" strokeWidth="1" fill="none"
+            <motion.path
+              key={i}
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: 0.15 }}
+              transition={{ duration: 2, delay: i * 0.2 }}
+              d={`M ${400 + (Math.random() - 0.5) * 400} ${300 + (Math.random() - 0.5) * 300} L 400 300`}
+              stroke="white"
+              strokeWidth="1"
+              fill="none"
             />
           ))}
-          <motion.circle animate={{ scale: [1, 1.5], opacity: [0.5, 0] }} transition={{ repeat: Infinity, duration: 2 }} cx="50%" cy="50%" r="30" fill={theme.primary} />
+          <motion.circle
+            animate={{ scale: [1, 1.5], opacity: [0.5, 0] }}
+            transition={{ repeat: Infinity, duration: 2 }}
+            cx="50%"
+            cy="50%"
+            r="30"
+            fill={theme.primary}
+          />
           <circle cx="50%" cy="50%" r="6" fill="white" />
         </svg>
       </div>
@@ -289,6 +394,183 @@ function TacticalMapStep({ signal, generatedOutput, onRestart }: any) {
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest text-white/30 mb-2">Decision Vector</p>
             <h5 className="text-3xl font-bold tracking-tight">{generatedOutput.subNode}</h5>
+            <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.2em] text-white/30">{reason}</p>
+          </div>
+          <div className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-bold uppercase tracking-widest text-emerald-400">
+            ISTANBUL LIVE
+          </div>
+        </div>
+
+        <motion.div
+          initial={{ y: 40, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="w-full md:w-[400px] rounded-[2.5rem] bg-[#16181D] border border-white/10 p-8 shadow-2xl backdrop-blur-3xl"
+        >
+          <p className="text-lg font-medium leading-snug mb-8">
+            HADE has activated the {generatedOutput.subNode} node based on your current signal.
+          </p>
+          <div className="flex gap-4">
+            <button className="flex-[2] py-5 rounded-2xl bg-white text-ink font-black text-[11px] uppercase tracking-widest">Let's Go</button>
+            <button onClick={onRestart} className="flex-1 py-5 rounded-2xl bg-white/5 font-bold text-[11px] uppercase tracking-widest text-white/40">Exit</button>
+          </div>
+        </motion.div>
+      </div>
+    </div>
+  );
+}
+
+function resolveNodeFromDictionary(node: string) {
+  const normalized = node.toLowerCase().trim();
+  return ISTANBUL_NODE_COORDS[normalized] || null;
+}
+
+function TacticalMapStep({ signal, generatedOutput, onRestart }: any) {
+  const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
+  const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: "hade-google-maps",
+    googleMapsApiKey,
+  });
+  const [center, setCenter] = useState(ISTANBUL_CENTER);
+  const [mapInstance, setMapInstance] = useState<any>(null);
+  const [isResolvingLocation, setIsResolvingLocation] = useState(false);
+
+  useEffect(() => {
+    if (!generatedOutput?.subNode) {
+      setCenter(ISTANBUL_CENTER);
+      return;
+    }
+
+    const knownPoint = resolveNodeFromDictionary(generatedOutput.subNode);
+    if (knownPoint) {
+      setCenter(knownPoint);
+      return;
+    }
+
+    if (!isLoaded || !(window as any).google?.maps?.Geocoder) {
+      setCenter(ISTANBUL_CENTER);
+      return;
+    }
+
+    let cancelled = false;
+    setIsResolvingLocation(true);
+
+    const geocoder = new (window as any).google.maps.Geocoder();
+    geocoder.geocode(
+      { address: `${generatedOutput.subNode}, Istanbul, Turkey` },
+      (results: any, status: string) => {
+        if (cancelled) return;
+        setIsResolvingLocation(false);
+
+        if (status === "OK" && results?.[0]?.geometry?.location) {
+          const point = results[0].geometry.location;
+          const nextCenter = { lat: point.lat(), lng: point.lng() };
+          setCenter(nextCenter);
+          return;
+        }
+
+        setCenter(ISTANBUL_CENTER);
+      },
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [generatedOutput?.subNode, isLoaded]);
+
+  useEffect(() => {
+    if (!mapInstance || !center) return;
+    mapInstance.panTo(center);
+  }, [center, mapInstance]);
+
+  if (!googleMapsApiKey) {
+    return (
+      <VectorMapFallback
+        theme={theme}
+        generatedOutput={generatedOutput}
+        onRestart={onRestart}
+        reason="Google Maps key missing. Using vector fallback."
+      />
+    );
+  }
+
+  if (loadError) {
+    return (
+      <VectorMapFallback
+        theme={theme}
+        generatedOutput={generatedOutput}
+        onRestart={onRestart}
+        reason="Google Maps load failed. Using vector fallback."
+      />
+    );
+  }
+
+  if (!isLoaded) {
+    return (
+      <VectorMapFallback
+        theme={theme}
+        generatedOutput={generatedOutput}
+        onRestart={onRestart}
+        reason="Loading map layer..."
+      />
+    );
+  }
+
+  return (
+    <div className="relative flex min-h-[600px] flex-col overflow-hidden rounded-[3rem] bg-[#0A0C10] text-white border border-white/5">
+      <div className="absolute inset-0">
+        <GoogleMap
+          mapContainerClassName="h-full w-full"
+          zoom={13.5}
+          center={center}
+          onLoad={(map) => setMapInstance(map)}
+          options={{
+            disableDefaultUI: true,
+            clickableIcons: false,
+            gestureHandling: "greedy",
+            minZoom: 11,
+            maxZoom: 16,
+            styles: GOOGLE_MAP_DARK_STYLE as any,
+            backgroundColor: "#0A0C10",
+          }}
+        >
+          <OverlayView position={center} mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}>
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0.5 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="relative -translate-x-1/2 -translate-y-1/2"
+            >
+              <motion.div
+                animate={{ scale: [1, 1.45], opacity: [0.45, 0] }}
+                transition={{ repeat: Infinity, duration: 1.9, ease: "easeOut" }}
+                className="absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                style={{ backgroundColor: `${theme.primary}55` }}
+              />
+              <div
+                className="relative rounded-2xl border px-4 py-2 text-[10px] font-black uppercase tracking-[0.16em] shadow-xl"
+                style={{
+                  borderColor: `${theme.primary}88`,
+                  color: "white",
+                  background: "rgba(10,12,16,0.88)",
+                  boxShadow: `0 12px 32px ${theme.primary}44`,
+                }}
+              >
+                {generatedOutput.subNode}
+              </div>
+            </motion.div>
+          </OverlayView>
+        </GoogleMap>
+      </div>
+
+      <div className="relative z-10 p-10 flex flex-col h-full justify-between flex-1">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-white/30 mb-2">Decision Vector</p>
+            <h5 className="text-3xl font-bold tracking-tight">{generatedOutput.subNode}</h5>
+            <p className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-white/30">
+              {isResolvingLocation ? "Resolving neighborhood..." : "Google Maps Synced"}
+            </p>
           </div>
           <div className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-bold uppercase tracking-widest text-emerald-400">ISTANBUL LIVE</div>
         </div>
@@ -370,6 +652,7 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
         signal: signal.combinedSignal,
         module: signal.moduleContext,
         location: signal.location,
+        llmChoice: signal.llmChoice,
       };
       // Async fix: await fetch + await response parse with full error handling.
       console.log("[HADE Demo] Request payload", requestPayload);
