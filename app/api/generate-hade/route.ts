@@ -873,6 +873,8 @@ export async function POST(req: NextRequest) {
     if (generated) {
       logEvent("info", "response_returned_gemini", {
         modelUsed: generated.modelUsed,
+        primary: generated.decision.primary,
+        tags: generated.decision.tags,
       });
       return NextResponse.json(generated.decision, { status: 200 });
     }
@@ -881,10 +883,16 @@ export async function POST(req: NextRequest) {
     logEvent("warn", "response_returned_fallback_after_generation_failures", {
       fallbackTags: fallbackDecision.tags,
       module: payload.module,
+      fallbackPrimary: fallbackDecision.primary,
     });
     return NextResponse.json(fallbackDecision, { status: 200 });
   } catch (error) {
     logEvent("error", "route_fatal_error", { error: String(error) });
-    return NextResponse.json(fallbackFromPayload(payload), { status: 200 });
+    const fallbackDecision = fallbackFromPayload(payload);
+    logEvent("warn", "response_returned_fallback_after_fatal_error", {
+      fallbackPrimary: fallbackDecision.primary,
+      fallbackTags: fallbackDecision.tags,
+    });
+    return NextResponse.json(fallbackDecision, { status: 200 });
   }
 }

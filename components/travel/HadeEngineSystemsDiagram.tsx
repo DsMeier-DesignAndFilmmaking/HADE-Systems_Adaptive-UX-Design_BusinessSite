@@ -30,13 +30,29 @@ interface GeneratedOutput {
   keyword: string;
   description: string;
   subNode: string;
+  tags: string[];
 }
 
 const DEFAULT_OUTPUT: GeneratedOutput = {
   keyword: "Discovery",
   description: "A hidden node along the Bosphorus has been flagged for your current state.",
   subNode: "Karaköy",
+  tags: ["adaptive", "fallback"],
 };
+
+interface DecisionNode {
+  keyword: string;
+  description: string;
+  subNode: string;
+}
+
+interface HadeApiResponse {
+  primary?: DecisionNode;
+  alternatives?: DecisionNode[];
+  tags?: string[];
+  urgency?: "high" | "medium" | "low";
+  novelty?: number;
+}
 
 const MODULE_THEMES: Record<ModuleContext, { 
   primary: string; 
@@ -124,7 +140,7 @@ const extractHighSignalWord = (input: string): string => {
 
 /* --- 3. UI Sub-Components --- */
 
-function UnifiedInputStep({ signal, setSignal, onNext }: any) {
+function UnifiedInputStep({ signal, setSignal, onNext, isLoading }: any) {
   const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
   return (
     <div className="relative flex min-h-[600px] flex-col overflow-hidden rounded-[2.5rem] border border-white/40 bg-white/70 p-8 backdrop-blur-2xl shadow-xl md:p-12">
@@ -172,8 +188,13 @@ function UnifiedInputStep({ signal, setSignal, onNext }: any) {
         </div>
       </div>
       <div className="mt-8 flex justify-end">
-        <button onClick={onNext} className="group flex items-center gap-3 rounded-full px-10 py-5 text-[11px] font-black uppercase tracking-widest text-white shadow-2xl transition-all hover:scale-[1.02]" style={{ background: theme.primary }}>
-          Explore the Moment →
+        <button
+          onClick={onNext}
+          disabled={isLoading}
+          className="group flex items-center gap-3 rounded-full px-10 py-5 text-[11px] font-black uppercase tracking-widest text-white shadow-2xl transition-all hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-70"
+          style={{ background: theme.primary }}
+        >
+          {isLoading ? "Thinking..." : "Explore the Moment →"}
         </button>
       </div>
     </div>
@@ -221,6 +242,15 @@ function ResultStep({ signal, generatedOutput, onRestart, onGo }: any) {
           <span style={{ textDecorationLine: 'underline', textDecorationColor: theme.primary, textDecorationThickness: '1px', textUnderlineOffset: '8px', color: 'white', opacity: 1 }}>{generatedOutput.keyword}</span>
           . {generatedOutput.description}"
         </p>
+        {generatedOutput.tags?.length > 0 && (
+          <div className="mt-6 flex flex-wrap gap-2">
+            {generatedOutput.tags.slice(0, 4).map((tag: string) => (
+              <span key={tag} className="rounded-full border border-white/20 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white/70">
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="mt-12 flex flex-col md:flex-row items-center gap-6 border-t border-white/5 pt-10">
@@ -283,6 +313,7 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
   const [generatedOutput, setGeneratedOutput] = useState<GeneratedOutput>(DEFAULT_OUTPUT);
   const [timerDone, setTimerDone] = useState(false);
   const [dataReady, setDataReady] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
 
   // Gate: advance to result only when both the 3.2s mask and the API call are done
@@ -290,32 +321,85 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
     if (step === "processing" && timerDone && dataReady) setStep("result");
   }, [step, timerDone, dataReady]);
 
+  const isValidDecisionNode = (value: unknown): value is DecisionNode => {
+    if (!value || typeof value !== "object") return false;
+    const node = value as Record<string, unknown>;
+    return (
+      typeof node.keyword === "string" &&
+      typeof node.description === "string" &&
+      typeof node.subNode === "string" &&
+      node.keyword.trim().length > 0 &&
+      node.description.trim().length > 0 &&
+      node.subNode.trim().length > 0
+    );
+  };
+
+  const buildClientFallback = (moduleContext: ModuleContext, inputSignal: string): GeneratedOutput => ({
+    keyword: extractHighSignalWord(inputSignal),
+    description: MODULE_THEMES[moduleContext].baseDesc,
+    subNode: "Karaköy",
+    tags: ["fallback", "local-context", "safe-render"],
+  });
+
+  const mapApiResponseToOutput = (response: unknown, moduleContext: ModuleContext, inputSignal: string): GeneratedOutput => {
+    const typed = response as HadeApiResponse;
+    if (!typed || !isValidDecisionNode(typed.primary)) {
+      return buildClientFallback(moduleContext, inputSignal);
+    }
+
+    const tags = Array.isArray(typed.tags)
+      ? typed.tags.filter((tag): tag is string => typeof tag === "string" && tag.trim().length > 0).slice(0, 4)
+      : [];
+
+    return {
+      keyword: typed.primary.keyword.trim(),
+      description: typed.primary.description.trim(),
+      subNode: typed.primary.subNode.trim(),
+      tags: tags.length > 0 ? tags : ["adaptive", "generated"],
+    };
+  };
+
   const handleExplore = async () => {
     setTimerDone(false);
     setDataReady(false);
+    setIsLoading(true);
     setStep("processing");
 
     try {
+      const requestPayload = {
+        signal: signal.combinedSignal,
+        module: signal.moduleContext,
+        location: signal.location,
+      };
+      // Async fix: await fetch + await response parse with full error handling.
+      console.log("[HADE Demo] Request payload", requestPayload);
+
       const res = await fetch("/api/generate-hade", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          signal: signal.combinedSignal,
-          module: signal.moduleContext,
-          location: signal.location,
-        }),
+        body: JSON.stringify(requestPayload),
       });
-      if (!res.ok) throw new Error("API error");
-      const data: GeneratedOutput = await res.json();
-      setGeneratedOutput(data);
-    } catch {
-      setGeneratedOutput({
-        keyword: extractHighSignalWord(signal.combinedSignal),
-        description: MODULE_THEMES[signal.moduleContext].baseDesc,
-        subNode: "Karaköy",
-      });
+
+      const rawData: unknown = await res.json().catch(() => null);
+      console.log("[HADE Demo] Raw API response", rawData);
+
+      if (!res.ok) {
+        throw new Error(`API error (${res.status})`);
+      }
+
+      const parsedCardData = mapApiResponseToOutput(
+        rawData,
+        signal.moduleContext,
+        signal.combinedSignal,
+      );
+      console.log("[HADE Demo] Parsed card data", parsedCardData);
+      setGeneratedOutput(parsedCardData);
+    } catch (error) {
+      console.error("[HADE Demo] Failed to generate decision", error);
+      setGeneratedOutput(buildClientFallback(signal.moduleContext, signal.combinedSignal));
     } finally {
       setDataReady(true);
+      setIsLoading(false);
     }
   };
 
@@ -325,7 +409,13 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
     setGeneratedOutput(DEFAULT_OUTPUT);
     setTimerDone(false);
     setDataReady(false);
+    setIsLoading(false);
   };
+
+  const safeOutput =
+    generatedOutput.keyword && generatedOutput.description && generatedOutput.subNode
+      ? generatedOutput
+      : buildClientFallback(signal.moduleContext, signal.combinedSignal);
 
   const themeColor = accent || "#10B981"; // Fallback to a default if not provided
 
@@ -341,10 +431,10 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
 
       <AnimatePresence mode="wait">
         <motion.div key={step} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.6, ease: [0.19, 1, 0.22, 1] }}>
-          {step === "input" && <UnifiedInputStep signal={signal} setSignal={setSignal} onNext={handleExplore} />}
+          {step === "input" && <UnifiedInputStep signal={signal} setSignal={setSignal} onNext={handleExplore} isLoading={isLoading} />}
           {step === "processing" && <ProcessingStep signal={signal} onComplete={() => setTimerDone(true)} />}
-          {step === "result" && <ResultStep signal={signal} generatedOutput={generatedOutput} onRestart={restart} onGo={() => setStep("mapping")} />}
-          {step === "mapping" && <TacticalMapStep signal={signal} generatedOutput={generatedOutput} onRestart={restart} />}
+          {step === "result" && <ResultStep signal={signal} generatedOutput={safeOutput} onRestart={restart} onGo={() => setStep("mapping")} />}
+          {step === "mapping" && <TacticalMapStep signal={signal} generatedOutput={safeOutput} onRestart={restart} />}
         </motion.div>
       </AnimatePresence>
 
