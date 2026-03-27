@@ -630,8 +630,17 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
   });
 
   const mapApiResponseToOutput = (response: unknown, moduleContext: ModuleContext, inputSignal: string): GeneratedOutput => {
-    const typed = response as HadeApiResponse;
-    if (!typed || !isValidDecisionNode(typed.primary)) {
+    const typed = response as HadeApiResponse & Partial<DecisionNode>;
+
+    // Direct check: response has a .primary object (standard shape)
+    const node: DecisionNode | null = isValidDecisionNode(typed?.primary)
+      ? typed.primary!
+      // Flattened check: response itself carries keyword/description/subNode at root
+      : isValidDecisionNode(typed)
+        ? (typed as unknown as DecisionNode)
+        : null;
+
+    if (!node) {
       return buildClientFallback(moduleContext, inputSignal);
     }
 
@@ -640,9 +649,9 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
       : [];
 
     return {
-      keyword: typed.primary.keyword.trim(),
-      description: typed.primary.description.trim(),
-      subNode: typed.primary.subNode.trim(),
+      keyword: node.keyword?.trim() || DEFAULT_OUTPUT.keyword,
+      description: node.description?.trim() || DEFAULT_OUTPUT.description,
+      subNode: node.subNode?.trim() || DEFAULT_OUTPUT.subNode,
       tags: tags.length > 0 ? tags : ["adaptive", "generated"],
     };
   };
@@ -681,7 +690,7 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
         signal.moduleContext,
         signal.combinedSignal,
       );
-      console.log("[HADE Demo] Parsed card data", parsedCardData);
+      console.log("FINAL MAPPED DATA:", parsedCardData);
       setGeneratedOutput(parsedCardData);
     } catch (error) {
       console.error("[HADE Demo] Failed to generate decision", error);
@@ -704,7 +713,7 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
   const safeOutput =
     generatedOutput.keyword && generatedOutput.description && generatedOutput.subNode
       ? generatedOutput
-      : buildClientFallback(signal.moduleContext, signal.combinedSignal);
+      : DEFAULT_OUTPUT;
 
   const themeColor = accent || "#10B981"; // Fallback to a default if not provided
 
