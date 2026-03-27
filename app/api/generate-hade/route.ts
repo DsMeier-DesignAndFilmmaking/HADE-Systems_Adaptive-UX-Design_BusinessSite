@@ -246,9 +246,17 @@ async function generateWithGroq(prompt: string): Promise<{ decision: HadeDecisio
       }),
     });
     const data = await response.json();
+    if (!response.ok) {
+      logEvent("warn", "groq_generation_error", { status: response.status, error: data?.error });
+      return null;
+    }
     const parsed = safeParseDecision(data?.choices?.[0]?.message?.content || "");
+    if (!parsed) logEvent("warn", "groq_parse_failed", { preview: String(data?.choices?.[0]?.message?.content).slice(0, 200) });
     return parsed ? { decision: parsed, modelUsed: modelId } : null;
-  } catch (error) { return null; }
+  } catch (error) {
+    logEvent("error", "groq_fetch_failed", { error: String(error) });
+    return null;
+  }
 }
 
 async function generateWithGemini(client: GoogleGenerativeAI, prompt: string, modelName: string): Promise<{ decision: HadeDecisionResponse; modelUsed: string } | null> {
@@ -259,9 +267,28 @@ async function generateWithGemini(client: GoogleGenerativeAI, prompt: string, mo
       generationConfig: { responseMimeType: "application/json", temperature: 0.7 },
     });
     const result = await model.generateContent(prompt);
-    const parsed = safeParseDecision(result.response.text());
+    const rawText = result.response.text();
+    const parsed = safeParseDecision(rawText);
+    if (!parsed) logEvent("warn", "gemini_parse_failed", { model: modelName, preview: rawText.slice(0, 200) });
     return parsed ? { decision: parsed, modelUsed: modelName } : null;
-  } catch (error) { return null; }
+  } catch (error) {
+    logEvent("error", "gemini_fetch_failed", { model: modelName, error: String(error) });
+    return null;
+  }
+}
+
+function buildFallback(payload: Required<HadeRequestPayload>): HadeDecisionResponse {
+  return {
+    primary: {
+      keyword: "Discovery",
+      description: `Adaptive node detected near ${payload.location}.`,
+      subNode: "Karaköy",
+    },
+    alternatives: [],
+    tags: ["fallback", payload.llmChoice, "safe-render"],
+    urgency: "low",
+    novelty: 0.5,
+  };
 }
 
 // MAIN POST HANDLER
@@ -272,25 +299,34 @@ export async function POST(req: NextRequest) {
 
   // 1. Claude Branch (Spatial Architect)
   if (payload.llmChoice === "claude") {
-    if (!process.env.OPENROUTER_API_KEY) return NextResponse.json({ error: "Missing Key" }, { status: 500 });
+    if (!process.env.OPENROUTER_API_KEY) {
+      logEvent("error", "missing_openrouter_api_key");
+      return NextResponse.json(buildFallback(payload));
+    }
     const result = await generateWithClaude(prompt);
-    if (result) return NextResponse.json(result.decision);
+    if (!result) logEvent("warn", "claude_generation_failed_using_fallback");
+    return NextResponse.json(result ? result.decision : buildFallback(payload));
   }
 
   // 2. Llama Branch (Tactical Speed)
   if (payload.llmChoice === "llama") {
-    if (!process.env.GROQ_API_KEY) return NextResponse.json({ error: "Missing Key" }, { status: 500 });
+    if (!process.env.GROQ_API_KEY) {
+      logEvent("error", "missing_groq_api_key");
+      return NextResponse.json(buildFallback(payload));
+    }
     const result = await generateWithGroq(prompt);
-    if (result) return NextResponse.json(result.decision);
+    if (!result) logEvent("warn", "llama_generation_failed_using_fallback");
+    return NextResponse.json(result ? result.decision : buildFallback(payload));
   }
 
   // 3. Gemini Branch (Default Deep Reasoning)
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: "Missing Gemini Key" }, { status: 500 });
-  
+  if (!apiKey) {
+    logEvent("error", "missing_gemini_api_key");
+    return NextResponse.json(buildFallback(payload));
+  }
   const client = new GoogleGenerativeAI(apiKey);
   const result = await generateWithGemini(client, prompt, MODEL_FLASH);
-  if (result) return NextResponse.json(result.decision);
-
-  return NextResponse.json({ error: "All providers failed" }, { status: 500 });
+  if (!result) logEvent("warn", "gemini_generation_failed_using_fallback");
+  return NextResponse.json(result ? result.decision : buildFallback(payload));
 }
