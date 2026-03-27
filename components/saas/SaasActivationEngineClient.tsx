@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 type FrictionScenario = "config_overload" | "integration_hell" | "feature_blindness";
-type Phase = "maze" | "intervention" | "handling" | "value";
+// Added 'confirm' phase
+type Phase = "maze" | "intervention" | "confirm" | "handling" | "value";
 
 const SCENARIOS: Record<FrictionScenario, { 
   label: string, 
@@ -12,7 +13,8 @@ const SCENARIOS: Record<FrictionScenario, {
   rescueText: string,
   valueText: string,
   icon: string,
-  mobileLabel: string
+  mobileLabel: string,
+  planSteps: string[] // Added for the new confirmation step
 }> = {
   config_overload: {
     label: "Complex Config",
@@ -20,7 +22,12 @@ const SCENARIOS: Record<FrictionScenario, {
     task: "Security Profile (12 fields)",
     rescueText: "This security profile is quite technical. I can handle the setup and organize everything automatically for you.",
     valueText: "Security protocols validated. HADE pre-filled 12 technical endpoints.",
-    icon: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+    icon: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z",
+    planSteps: [
+      "Map 12 technical security fields",
+      "Verify SSL/TLS certificate chains",
+      "Generate encrypted access tokens"
+    ]
   },
   integration_hell: {
     label: "Data Mapping",
@@ -28,7 +35,12 @@ const SCENARIOS: Record<FrictionScenario, {
     task: "Header Sync (24 headers)",
     rescueText: "Mapping headers manually is a common friction point. Want me to auto-detect your schema and sync the fields?",
     valueText: "Schema detected. 24 headers mapped with 99.8% confidence.",
-    icon: "M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+    icon: "M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4",
+    planSteps: [
+      "Scan incoming JSON schema",
+      "Auto-link 24 matching headers",
+      "Standardize date & currency formats"
+    ]
   },
   feature_blindness: {
     label: "Feature Discovery",
@@ -36,7 +48,12 @@ const SCENARIOS: Record<FrictionScenario, {
     task: "Workflow Activation",
     rescueText: "It looks like you're searching for the Workflow Engine. I can activate your first automated bridge for you now.",
     valueText: "Workflow Engine active. Your first automated bridge is live and running.",
-    icon: "M13 10V3L4 14h7v7l9-11h-7z"
+    icon: "M13 10V3L4 14h7v7l9-11h-7z",
+    planSteps: [
+      "Initialize Workflow Engine",
+      "Bridge Dashboard to Analytics",
+      "Enable real-time trigger alerts"
+    ]
   }
 };
 
@@ -80,6 +97,16 @@ export default function SaasActivationEngineClient() {
 
   return (
     <section className="w-full py-4">
+
+      {/* Updated Prototype Note */}
+      <div className="mb-6 flex items-center justify-center">
+        <div className="flex items-center gap-3 rounded-full border border-ink/5 bg-ink/[0.02] px-5 py-2">
+          <div className="flex h-4 w-4 items-center justify-center rounded-full bg-ink/10 text-[10px] font-bold text-ink/50">i</div>
+          <p className="text-[11px] font-medium tracking-tight text-ink/40">
+            <strong>Interactive Prototype Concept:</strong> Simulation only. Real-time HADE API integration for this study is currently in progress.
+          </p>
+        </div>
+      </div>
       <div className="relative min-h-[620px] overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl flex flex-col">
         
         {/* MOBILE-OPTIMIZED SCENARIO TABS */}
@@ -166,32 +193,68 @@ export default function SaasActivationEngineClient() {
             )}
           </AnimatePresence>
 
-          {/* THE CONCIERGE MODAL (Responsive Scaling) */}
+          {/* THE INTERVENTION/CONFIRMATION MODALS */}
           <AnimatePresence>
-            {phase === "intervention" && (
+            {(phase === "intervention" || phase === "confirm") && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-50 flex items-center justify-center p-4 md:p-6 bg-slate-900/10 backdrop-blur-[2px]">
                 <motion.div 
                   initial={{ y: 20, scale: 0.95, opacity: 0 }} 
                   animate={{ y: 0, scale: 1, opacity: 1 }} 
                   exit={{ y: 15, scale: 0.95, opacity: 0 }} 
-                  className="w-full max-w-[340px] bg-white rounded-[2rem] p-7 md:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-100 text-center relative"
+                  className="w-full max-w-[340px] bg-white rounded-[2rem] p-7 md:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-100 relative"
                 >
-                  <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                       <path d={SCENARIOS[scenario].icon} />
-                     </svg>
-                  </div>
-                  <h4 className="text-xl font-bold text-slate-900 tracking-tight leading-tight">Want me to take it from here?</h4>
-                  <p className="mt-3 text-sm text-slate-500 leading-relaxed">{SCENARIOS[scenario].rescueText}</p>
-                  
-                  <div className="mt-8 space-y-2">
-                    <button onClick={() => setPhase("handling")} className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-100 hover:bg-blue-700 active:scale-[0.97] transition-all">
-                      Yes, do it for me
-                    </button>
-                    <button onClick={() => {setPhase("maze"); setMisClicks(0);}} className="w-full py-2 text-slate-400 font-bold text-xs hover:text-slate-600 transition-colors">
-                      I&apos;ll do it manually
-                    </button>
-                  </div>
+                  {phase === "intervention" ? (
+                    <div className="text-center">
+                      <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                           <path d={SCENARIOS[scenario].icon} />
+                         </svg>
+                      </div>
+                      <h4 className="text-xl font-bold text-slate-900 tracking-tight leading-tight">Want me to take it from here?</h4>
+                      <p className="mt-3 text-sm text-slate-500 leading-relaxed">{SCENARIOS[scenario].rescueText}</p>
+                      
+                      <div className="mt-8 space-y-2">
+                        <button onClick={() => setPhase("confirm")} className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-100 hover:bg-blue-700 active:scale-[0.97] transition-all">
+                          Yes, do it for me
+                        </button>
+                        <button onClick={() => {setPhase("maze"); setMisClicks(0);}} className="w-full py-2 text-slate-400 font-bold text-xs hover:text-slate-600 transition-colors">
+                          I&apos;ll do it manually
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-blue-600">Proposed Plan</span>
+                      <h4 className="mt-2 text-xl font-bold text-slate-900 tracking-tight">Confirm Automation</h4>
+                      <p className="mt-2 text-xs text-slate-400 mb-6">HADE will perform the following actions to resolve {SCENARIOS[scenario].label.toLowerCase()}:</p>
+                      
+                      <div className="space-y-3 mb-8">
+                        {SCENARIOS[scenario].planSteps.map((step, i) => (
+                          <motion.div 
+                            initial={{ x: -10, opacity: 0 }} 
+                            animate={{ x: 0, opacity: 1 }} 
+                            transition={{ delay: i * 0.1 }}
+                            key={i} 
+                            className="flex items-center gap-3"
+                          >
+                            <div className="h-5 w-5 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
+                               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="4"><polyline points="20 6 9 17 4 12"/></svg>
+                            </div>
+                            <span className="text-[11px] font-medium text-slate-600">{step}</span>
+                          </motion.div>
+                        ))}
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button onClick={() => setPhase("intervention")} className="flex-1 py-3 text-slate-400 font-bold text-xs hover:text-slate-600">
+                          Go Back
+                        </button>
+                        <button onClick={() => setPhase("handling")} className="flex-[2] py-4 bg-slate-900 text-white rounded-xl font-bold text-sm shadow-lg active:scale-[0.97] transition-all">
+                          Start Execution
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="mt-6 pt-5 border-t border-slate-50 flex items-center justify-center gap-2">
                      <span className="h-1 w-1 rounded-full bg-blue-500 animate-pulse" />

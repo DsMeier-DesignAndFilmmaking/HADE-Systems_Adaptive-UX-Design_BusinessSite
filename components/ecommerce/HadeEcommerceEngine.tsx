@@ -74,7 +74,6 @@ function BehavioralCaptureStep({
 
   const simulateHesitation = () => {
     setHesitationTriggered(true);
-    // Burst jacket dwell by 8s in increments
     let added = 0;
     const burst = setInterval(() => {
       setDwellTimes((prev) => ({ ...prev, jacket: prev.jacket + 1 }));
@@ -93,8 +92,6 @@ function BehavioralCaptureStep({
 
   return (
     <div className="relative flex min-h-[580px] flex-col overflow-hidden rounded-[2.5rem] border border-white/40 bg-white/70 p-8 backdrop-blur-2xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.10)] md:p-10">
-
-      {/* Header */}
       <div className="flex items-center gap-2 mb-1">
         <div className="h-1.5 w-1.5 rounded-full" style={{ background: GOLD }} />
         <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-ink/40">
@@ -106,10 +103,7 @@ function BehavioralCaptureStep({
         Hover to build dwell time. Click to stack comparisons. Trigger hesitation to simulate a revisit loop.
       </p>
 
-      {/* Main layout */}
       <div className="flex-1 grid md:grid-cols-[1fr_220px] gap-5">
-
-        {/* Product cards */}
         <div className="flex flex-col gap-3">
           {PRODUCTS.map((p) => {
             const isHovered = hoveredId === p.id;
@@ -123,7 +117,7 @@ function BehavioralCaptureStep({
                 onMouseEnter={() => startDwell(p.id)}
                 onMouseLeave={stopDwell}
                 onClick={() => handleClick(p.id)}
-                className="cursor-pointer rounded-2xl border bg-white p-4 transition-all duration-200 select-none"
+                className="relative cursor-pointer rounded-2xl border bg-white p-4 transition-all duration-200 select-none overflow-hidden"
                 style={{
                   borderColor: isLeader
                     ? GOLD
@@ -161,20 +155,26 @@ function BehavioralCaptureStep({
                     )}
                   </div>
                 </div>
-                {isHovered && (
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: "100%" }}
-                    transition={{ duration: 1, ease: "linear", repeat: Infinity }}
-                    className="mt-3 h-[2px] rounded-full origin-left"
-                    style={{ background: GOLD, opacity: 0.5 }}
-                  />
-                )}
+
+                {/* Fixed: Absolute positioning prevents height jump */}
+                <div className="absolute bottom-0 left-0 w-full h-[2px] bg-transparent">
+                  <AnimatePresence>
+                    {isHovered && (
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: "100%" }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 1, ease: "linear", repeat: Infinity }}
+                        className="h-full rounded-full origin-left"
+                        style={{ background: GOLD, opacity: 0.5 }}
+                      />
+                    )}
+                  </AnimatePresence>
+                </div>
               </motion.div>
             );
           })}
 
-          {/* Hesitation button */}
           <button
             onClick={simulateHesitation}
             disabled={hesitationTriggered}
@@ -190,7 +190,6 @@ function BehavioralCaptureStep({
           </button>
         </div>
 
-        {/* Signal feed */}
         <div
           className="rounded-2xl p-5 flex flex-col gap-5"
           style={{ background: "rgba(11,13,18,0.03)", border: "1px solid rgba(11,13,18,0.07)" }}
@@ -199,8 +198,6 @@ function BehavioralCaptureStep({
             <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-ink/35 mb-3">
               Signal Feed
             </p>
-
-            {/* Dwell times */}
             <div className="space-y-2 mb-4">
               {PRODUCTS.map((p) => (
                 <div key={p.id} className="flex items-center justify-between gap-2">
@@ -214,8 +211,6 @@ function BehavioralCaptureStep({
                 </div>
               ))}
             </div>
-
-            {/* Comparison stacks */}
             <div
               className="rounded-xl px-3 py-2.5 mb-3"
               style={{ background: "rgba(11,13,18,0.04)", border: "1px solid rgba(11,13,18,0.07)" }}
@@ -230,8 +225,6 @@ function BehavioralCaptureStep({
                 {comparisonCount}
               </p>
             </div>
-
-            {/* Hesitation signal */}
             <div
               className="rounded-xl px-3 py-2.5"
               style={{ background: "rgba(11,13,18,0.04)", border: "1px solid rgba(11,13,18,0.07)" }}
@@ -250,7 +243,6 @@ function BehavioralCaptureStep({
         </div>
       </div>
 
-      {/* CTA */}
       <div className="mt-6 flex items-center justify-end border-t border-ink/5 pt-6">
         <button
           onClick={onNext}
@@ -350,8 +342,6 @@ function AdaptiveCatalogStep({ dwellTimes, onRestart }: ResultProps) {
     <div className="flex min-h-[580px] flex-col overflow-hidden rounded-[2.5rem] bg-[#09090b] p-8 text-white shadow-2xl md:p-10">
       <div className="flex-1">
         <motion.div initial={{ y: 16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.15 }}>
-
-          {/* Header */}
           <div className="flex items-center gap-2 mb-8">
             <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/35">
@@ -359,7 +349,6 @@ function AdaptiveCatalogStep({ dwellTimes, onRestart }: ResultProps) {
             </span>
           </div>
 
-          {/* High-Fit card */}
           <div
             className="rounded-2xl p-6 mb-5"
             style={{
@@ -367,7 +356,6 @@ function AdaptiveCatalogStep({ dwellTimes, onRestart }: ResultProps) {
               border: `1px solid rgba(196,146,42,0.25)`,
             }}
           >
-            {/* HADE badge */}
             <div
               className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 mb-5"
               style={{
@@ -396,7 +384,6 @@ function AdaptiveCatalogStep({ dwellTimes, onRestart }: ResultProps) {
             </div>
           </div>
 
-          {/* Deprioritized products */}
           <div>
             <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/25 mb-3">
               Reduced Visibility
@@ -414,11 +401,9 @@ function AdaptiveCatalogStep({ dwellTimes, onRestart }: ResultProps) {
               ))}
             </div>
           </div>
-
         </motion.div>
       </div>
 
-      {/* Footer */}
       <div className="mt-8 flex items-center justify-between border-t border-white/8 pt-6">
         <button
           onClick={onRestart}
@@ -450,8 +435,6 @@ export default function HadeEcommerceEngine() {
 
   return (
     <section className="w-full py-6">
-
-      {/* Dev note */}
       <div className="mb-6 flex items-center justify-center">
         <div className="flex items-center gap-3 rounded-full border border-ink/5 bg-ink/[0.02] px-5 py-2">
           <div className="flex h-4 w-4 items-center justify-center rounded-full bg-ink/10 text-[10px] font-bold text-ink/50">i</div>
@@ -489,7 +472,6 @@ export default function HadeEcommerceEngine() {
         </motion.div>
       </AnimatePresence>
 
-      {/* Pagination dots */}
       <div className="mt-8 flex justify-center gap-2">
         {(["input", "processing", "result"] as StepId[]).map((s) => (
           <div

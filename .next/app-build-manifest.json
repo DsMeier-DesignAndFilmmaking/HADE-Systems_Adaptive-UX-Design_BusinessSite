@@ -16,10 +16,20 @@
       "static/chunks/main-app.js",
       "static/chunks/app/case-studies/page.js"
     ],
+    "/case-studies/ecommerce/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/case-studies/ecommerce/page.js"
+    ],
     "/case-studies/saas/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/case-studies/saas/page.js"
+    ],
+    "/case-studies/travel/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/case-studies/travel/page.js"
     ]
   }
 }
