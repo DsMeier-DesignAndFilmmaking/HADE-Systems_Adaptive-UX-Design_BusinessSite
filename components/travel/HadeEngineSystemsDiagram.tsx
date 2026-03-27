@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { MapPin } from "lucide-react";
 import { GoogleMap, OverlayView, useJsApiLoader } from "@react-google-maps/api";
@@ -8,7 +8,7 @@ import { GoogleMap, OverlayView, useJsApiLoader } from "@react-google-maps/api";
 
 /* --- 1. Enhanced HADE Types & Theme --- */
 type StepId = "input" | "processing" | "result" | "mapping";
-type LlmChoice = "gemini" | "llama" | "mock";
+type LlmChoice = "gemini" | "llama" | "claude";
 
 type ModuleContext = "weather-vibe" | "expert-network" | "mood-journey" | "meet-someone" | "the-wildcard";
 
@@ -173,8 +173,8 @@ const ISTANBUL_NODE_COORDS: Record<string, { lat: number; lng: number }> = {
 
 const LLM_OPTIONS: Array<{ id: LlmChoice; label: string; detail: string }> = [
   { id: "gemini", label: "Gemini", detail: "Google Deep Reasoning" },
-  { id: "llama", label: "Llama", detail: "Open Strategy Layer" },
-  { id: "mock", label: "Mock", detail: "Deterministic Fallback" },
+  { id: "llama",  label: "Llama",  detail: "Open Strategy Layer"  },
+  { id: "claude", label: "Claude", detail: "Spatial Architect"    },
 ];
 
 /* --- 3. UI Sub-Components --- */
@@ -612,6 +612,7 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
   const [timerDone, setTimerDone] = useState(false);
   const [dataReady, setDataReady] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const exploreStartRef = useRef<number>(0);
   const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
 
   const handleTimerComplete = useCallback(() => {
@@ -623,11 +624,12 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
   }, [step]);
 
   // Gate: when data is ready, Llama exits immediately; Gemini waits for timer pulse.
+  // Claude uses its own setTimeout path in handleExplore and is excluded here.
   useEffect(() => {
     if (step === "processing" && dataReady) {
       if (signal.llmChoice === "llama") {
         setStep("result");
-      } else if (timerDone) {
+      } else if (signal.llmChoice !== "claude" && timerDone) {
         setStep("result");
       }
     }
@@ -691,6 +693,7 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
     // Interaction guard: prevent overlapping requests/transitions.
     if (isLoading) return;
 
+    exploreStartRef.current = Date.now();
     setTimerDone(false);
     setDataReady(false);
     setIsLoading(true);
@@ -732,10 +735,25 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
         setStep("result");
         setTimerDone(true);
         setIsLoading(false);
+      } else if (signal.llmChoice === "claude") {
+        // Claude medium-path: ensure at least 1800ms display, then add 150ms safety gap.
+        const elapsed = Date.now() - exploreStartRef.current;
+        const delay = Math.max(0, 1800 - elapsed) + 150;
+        setTimeout(() => {
+          setStep("result");
+          setTimerDone(true);
+          setIsLoading(false);
+        }, delay);
       }
     } catch (error) {
       console.error("[HADE Demo] Failed to generate decision", error);
       setGeneratedOutput(buildClientFallback(signal.moduleContext, signal.combinedSignal));
+      // Claude error fallback: exit processing immediately (no timer to wait for).
+      if (signal.llmChoice === "claude") {
+        setStep("result");
+        setTimerDone(true);
+        setIsLoading(false);
+      }
     } finally {
       setDataReady(true);
     }
@@ -775,7 +793,7 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
               key={`processing-${signal.llmChoice}`}
               signal={signal}
               onComplete={handleTimerComplete}
-              duration={signal.llmChoice === "llama" ? 0 : 3200}
+              duration={signal.llmChoice === "llama" ? 0 : signal.llmChoice === "claude" ? 1800 : 3200}
             />
           )}
           {step === "result" && <ResultStep signal={signal} generatedOutput={safeOutput} onRestart={restart} onGo={() => setStep("mapping")} />}
