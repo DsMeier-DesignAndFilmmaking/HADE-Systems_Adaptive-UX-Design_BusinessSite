@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef, startTransition } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { MapPin } from "lucide-react";
 import { GoogleMap, OverlayView, useJsApiLoader } from "@react-google-maps/api";
@@ -229,6 +229,7 @@ function EngineSettings({ signal, setSignal }: any) {
 
 function UnifiedInputStep({ signal, setSignal, onNext, isLoading }: any) {
   const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
+  const hasSignalInput = signal.combinedSignal.trim().length > 0;
   return (
     <div className="relative flex min-h-[600px] flex-col overflow-hidden rounded-[2.5rem] border border-white/40 bg-white/70 p-8 backdrop-blur-2xl shadow-xl md:p-12">
       <div className="flex-1">
@@ -279,11 +280,14 @@ function UnifiedInputStep({ signal, setSignal, onNext, isLoading }: any) {
       <div className="mt-8 flex justify-end">
         <button
           onClick={onNext}
-          disabled={isLoading}
+          disabled={isLoading || !hasSignalInput}
           className="group flex items-center gap-3 rounded-full px-10 py-5 text-[11px] font-black uppercase tracking-widest text-white shadow-2xl transition-all hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-70"
-          style={{ background: theme.primary }}
+          style={{
+            background: isLoading ? "#6B7280" : theme.primary,
+            cursor: isLoading || !hasSignalInput ? "not-allowed" : "pointer",
+          }}
         >
-          {isLoading ? "Thinking..." : "Explore the Moment →"}
+          {isLoading ? "Orchestrating..." : "Explore the Moment →"}
         </button>
       </div>
     </div>
@@ -323,6 +327,12 @@ const ProcessingStep = React.memo(function ProcessingStep({ signal, onComplete, 
 
 function ResultStep({ signal, generatedOutput, onRestart, onGo }: any) {
   const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
+  const displayKeyword =
+    generatedOutput?.keyword || generatedOutput?.primary?.keyword || "HADE Node";
+  const displayDesc =
+    generatedOutput?.description ||
+    generatedOutput?.primary?.description ||
+    "Processing Istanbul signal...";
 
   return (
     <div className="relative flex min-h-[600px] flex-col overflow-hidden rounded-[2.5rem] bg-ink p-8 text-white shadow-2xl md:p-12">
@@ -334,8 +344,8 @@ function ResultStep({ signal, generatedOutput, onRestart, onGo }: any) {
         <h4 className="text-5xl font-bold tracking-tighter leading-tight max-w-xl">{theme.resultTitle}</h4>
         <p className="mt-8 text-2xl text-white/50 leading-relaxed font-light max-w-2xl italic">
           "We've tuned the Istanbul pulse for{' '}
-          <span style={{ textDecorationLine: 'underline', textDecorationColor: theme.primary, textDecorationThickness: '1px', textUnderlineOffset: '8px', color: 'white', opacity: 1 }}>{generatedOutput.keyword}</span>
-          . {generatedOutput.description}"
+          <span style={{ textDecorationLine: 'underline', textDecorationColor: theme.primary, textDecorationThickness: '1px', textUnderlineOffset: '8px', color: 'white', opacity: 1 }}>{displayKeyword}</span>
+          . {displayDesc}"
         </p>
         {generatedOutput.tags?.length > 0 && (
           <div className="mt-6 flex flex-wrap gap-2">
@@ -604,33 +614,31 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
   const [isLoading, setIsLoading] = useState(false);
   const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
 
-  const isMountedRef = useRef(true);
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => { isMountedRef.current = false; };
-  }, []);
-
-  // Tracks the wall-clock moment processing started — used by the Race Guard.
-  const processingStartRef = useRef<number>(0);
-
-  const handleTimerComplete = useCallback(() => setTimerDone(true), []);
-
-  // Gate: advance to "result" only when both the processing timer and API call are done.
-  // Race Guard: enforce a minimum 1000ms on-screen display regardless of data arrival speed.
-  // This gives Framer Motion a stable AnimatePresence frame before transitioning.
-  useEffect(() => {
-    let transitionTimer: NodeJS.Timeout;
-    if (step === "processing" && timerDone && dataReady) {
-      const elapsed = Date.now() - processingStartRef.current;
-      const MIN_DISPLAY_MS = 1000;
-      // floor at 50ms so the exit animation always has a starting point
-      const remaining = Math.max(50, MIN_DISPLAY_MS - elapsed);
-      transitionTimer = setTimeout(() => {
-        startTransition(() => setStep("result"));
-      }, remaining);
+  const handleTimerComplete = useCallback(() => {
+    // Only mark timer complete if we're still processing.
+    // Llama can resolve so quickly that the UI may already be on "result".
+    if (step === "processing") {
+      setTimerDone(true);
     }
-    return () => clearTimeout(transitionTimer);
-  }, [step, timerDone, dataReady]);
+  }, [step]);
+
+  // Gate: when data is ready, Llama exits immediately; Gemini waits for timer pulse.
+  useEffect(() => {
+    if (step === "processing" && dataReady) {
+      if (signal.llmChoice === "llama") {
+        setStep("result");
+      } else if (timerDone) {
+        setStep("result");
+      }
+    }
+  }, [step, dataReady, timerDone, signal.llmChoice]);
+
+  // Release interaction lock only after result transition is initiated.
+  useEffect(() => {
+    if (step === "result") {
+      setIsLoading(false);
+    }
+  }, [step]);
 
   const isValidDecisionNode = (value: unknown): value is DecisionNode => {
     if (!value || typeof value !== "object") return false;
@@ -680,11 +688,13 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
   };
 
   const handleExplore = async () => {
+    // Interaction guard: prevent overlapping requests/transitions.
+    if (isLoading) return;
+
     setTimerDone(false);
     setDataReady(false);
     setIsLoading(true);
     setStep("processing");
-    processingStartRef.current = Date.now();
 
     try {
       const requestPayload = {
@@ -715,36 +725,19 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
         signal.combinedSignal,
       );
       console.log("FINAL MAPPED DATA:", parsedCardData);
-      if (isMountedRef.current) {
-        startTransition(() => {
-          setGeneratedOutput(() => parsedCardData);
-        });
+      setGeneratedOutput(parsedCardData);
+
+      // Llama fast-path: bypass timer gate immediately once data is available.
+      if (signal.llmChoice === "llama") {
+        setStep("result");
+        setTimerDone(true);
+        setIsLoading(false);
       }
     } catch (error) {
       console.error("[HADE Demo] Failed to generate decision", error);
-      if (isMountedRef.current) {
-        setGeneratedOutput(() => buildClientFallback(signal.moduleContext, signal.combinedSignal));
-      }
+      setGeneratedOutput(buildClientFallback(signal.moduleContext, signal.combinedSignal));
     } finally {
-      // Minimum 800ms buffer: ensures ProcessingStep has cleared its enter animation
-      // before the data-ready signal unlocks the gate. With AnimatePresence mode="wait",
-      // the enter animation doesn't even start until t=600ms (after the exit plays).
-      // A React re-render at exactly t=600ms can jam the Framer Motion fiber at opacity:0.
-      // Holding dataReady until t=800ms guarantees a stable mid-enter mount point.
-      if (isMountedRef.current) {
-        const elapsed = Date.now() - processingStartRef.current;
-        const MIN_BUFFER_MS = 800;
-        if (elapsed < MIN_BUFFER_MS) {
-          await new Promise<void>((resolve) =>
-            setTimeout(resolve, MIN_BUFFER_MS - elapsed)
-          );
-        }
-        // Re-check after the async wait — component may have unmounted during the delay.
-        if (isMountedRef.current) {
-          setDataReady(true);
-          setIsLoading(false);
-        }
-      }
+      setDataReady(true);
     }
   };
 
@@ -774,14 +767,15 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
         <h2 className="text-5xl md:text-6xl font-bold tracking-tighter">HADE Orchestration</h2>
       </div>
 
-      <AnimatePresence mode="wait" initial={false}>
+      <AnimatePresence mode="popLayout" initial={false}>
         <motion.div key={step} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.6, ease: [0.19, 1, 0.22, 1] }}>
           {step === "input" && <UnifiedInputStep signal={signal} setSignal={setSignal} onNext={handleExplore} isLoading={isLoading} />}
           {step === "processing" && (
             <ProcessingStep
+              key={`processing-${signal.llmChoice}`}
               signal={signal}
               onComplete={handleTimerComplete}
-              duration={signal.llmChoice === "llama" ? 1200 : 3200}
+              duration={signal.llmChoice === "llama" ? 0 : 3200}
             />
           )}
           {step === "result" && <ResultStep signal={signal} generatedOutput={safeOutput} onRestart={restart} onGo={() => setStep("mapping")} />}
