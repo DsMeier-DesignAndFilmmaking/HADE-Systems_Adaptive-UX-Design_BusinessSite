@@ -187,7 +187,7 @@ function normalizeIncomingPayload(body: unknown): Required<HadeRequestPayload> {
   
   // Validating against our new 3-model backbone
   const choice: llmChoiceType = (choiceRaw === "llama" || choiceRaw === "claude") ? choiceRaw : "gemini";
-  
+
   return {
     signal: compact(obj.signal || "Explore nearby"),
     module: obj.module || "weather-vibe",
@@ -334,15 +334,27 @@ export async function POST(req: NextRequest) {
   const prompt = buildPrompt(payload);
 
   // 1. Claude Branch (Spatial Architect)
-  if (payload.llmChoice === "claude") {
-    if (!process.env.OPENROUTER_API_KEY) {
-      logEvent("error", "missing_openrouter_api_key");
-      return NextResponse.json(buildFallback(payload));
-    }
-    const result = await generateWithClaude(prompt);
-    if (!result) logEvent("warn", "claude_generation_failed_using_fallback");
-    return NextResponse.json(result ? result.decision : buildFallback(payload));
-  }
+// Inside POST function
+if (payload.llmChoice === "claude") {
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      "model": "anthropic/claude-3.5-sonnet",
+      "messages": [
+        { "role": "system", "content": SYSTEM_INSTRUCTION + CLAUDE_ARCHITECT_INSTRUCTION },
+        { "role": "user", "content": buildPrompt(payload) }
+      ],
+      "response_format": { "type": "json_object" }
+    })
+  });
+  const data = await response.json();
+  const parsed = safeParseDecision(data.choices?.[0]?.message?.content || "");
+  if (parsed) return NextResponse.json(parsed);
+}
 
   // 2. Llama Branch (Tactical Speed)
   if (payload.llmChoice === "llama") {
