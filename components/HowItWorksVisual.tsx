@@ -35,6 +35,7 @@ const THEME = {
   },
 };
 
+
 /* ─── SCENARIO DATA ──────────────────────────────────────────────── */
 const SCENARIOS = [
   {
@@ -809,10 +810,98 @@ const DeliverablesGrid = () => (
   </div>
 );
 
+const HADEArchitectureMap = () => {
+  return (
+    <section
+      className="rounded-2xl px-6 py-10 md:px-10"
+      style={{ background: THEME.colors.dark, border: `1px solid ${THEME.colors.border}` }}
+    >
+      {/* Header */}
+      <div className="mb-8">
+        <p className="text-[10px] uppercase tracking-[0.28em] text-teal-500 mb-2">
+          System Overview
+        </p>
+        <h2 className="text-2xl font-semibold text-white mb-3">
+          The HADE Decision Architecture
+        </h2>
+        <p className="text-sm text-slate-400 max-w-xl">
+          Human-aware systems adapt to real-time user context — transforming live signals into intelligent product decisions.
+        </p>
+      </div>
+
+      {/* Core Flow */}
+      <div className="flex flex-col md:flex-row items-center gap-4 md:gap-2">
+        {[
+          {
+            label: "Inputs",
+            title: "Signals",
+            desc: "Behavior, intent, and environmental context",
+          },
+          {
+            label: "Processing",
+            title: "HADE Engine",
+            desc: "Context interpretation and decision logic",
+          },
+          {
+            label: "Outputs",
+            title: "Decisions",
+            desc: "Adaptive actions generated in real time",
+          },
+          {
+            label: "System",
+            title: "Interfaces",
+            desc: "UI, flows, and system behavior updates",
+          },
+        ].map((item, i) => (
+          <React.Fragment key={item.title}>
+            <div className="flex-1 rounded-xl p-5 bg-[#0d0d0e] border border-white/10">
+              <p className="text-[9px] uppercase tracking-widest text-teal-500 mb-1">
+                {item.label}
+              </p>
+              <h4 className="text-white font-semibold text-sm mb-1">
+                {item.title}
+              </h4>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                {item.desc}
+              </p>
+            </div>
+
+            {i < 3 && (
+              <div className="hidden md:block w-6 h-px bg-white/10" />
+            )}
+          </React.Fragment>
+        ))}
+      </div>
+
+      {/* Surfaces */}
+      <div className="mt-10">
+        <p className="text-[10px] uppercase tracking-[0.22em] text-teal-500 mb-3">
+          Surfaces
+        </p>
+
+        <div className="flex flex-wrap gap-3">
+          {["SDK", "Applications", "Internal Tools"].map((item) => (
+            <div
+              key={item}
+              className="px-4 py-2 rounded-full border border-white/10 text-xs text-slate-300 bg-white/5"
+            >
+              {item}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
 /* ─── MAIN EXPORT ────────────────────────────────────────────────── */
 export function HowItWorksVisual() {
   return (
     <div className="space-y-16">
+
+      {/* NEW: Architecture Map (Top Layer) */}
+      <HADEArchitectureMap />
+
       <section>
         <SystemArchitecture />
       </section>
