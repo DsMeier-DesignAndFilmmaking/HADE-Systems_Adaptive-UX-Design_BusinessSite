@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 const CASE_STUDIES = [
   {
-    title: "Adaptive Trip Discovery",
+    title: "A Multi-Model Neural Backbone for Adaptive Urban Discovery",
     description:
       "Travel tools are built for planning. But travel happens in real time — context shifts, plans break, and decisions need to be made in the field. This system reads live location, movement, and behavioral signals to surface the best next move at each moment.",
     metric: "Outcome: context-aware real-time guidance across four in-field user states",
@@ -79,10 +79,11 @@ export default function CaseStudiesPage() {
                 </h1>
                 </Reveal>
                 <Reveal delay={160}>
-                      <p className="mt-6 max-w-3xl text-lg leading-relaxed text-ink/75">
-                      Real-world applications of HADE Systems across activation, retention, and full-system transformation.
-                      </p>
-                    </Reveal>
+                <p className="mt-6 max-w-3xl text-lg leading-relaxed text-ink/75">
+                  Real-world applications of HADE Systems across activation, retention, and 
+                  full-system{"\u00a0"}transformation.
+                </p>
+                </Reveal>
               </div>
             </Reveal>
 

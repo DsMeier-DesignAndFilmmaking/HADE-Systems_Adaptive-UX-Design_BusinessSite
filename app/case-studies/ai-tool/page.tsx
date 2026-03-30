@@ -70,7 +70,7 @@ export default function Page() {
               {[
                 { href: "/case-studies/ecommerce", label: "E-Commerce", hook: "Real-time intent classification that routes B2B SaaS users to the fastest path to their first value moment." },
                 { href: "/case-studies/saas", label: "SaaS · Concept Build", hook: "Behavior-triggered engagement that detects drift and responds before churn occurs — 38% to 54% week-4 retention." },
-                { href: "/case-studies/travel", label: "Adaptive Trip Discovery", hook: "Live context classification that replaces static travel plans with real-time in-field guidance across four user states." },
+                { href: "/case-studies/travel", label: "A Multi-Model Neural Backbone for Adaptive Urban Discovery", hook: "Live context classification that replaces static travel plans with real-time in-field guidance across four user states." },
               ].map(({ href, label, hook }) => (
                 <Link key={href} href={href} className="group rounded-xl border border-line bg-white/60 px-5 py-4 hover:border-ink/20 transition-colors">
                   <p className="text-sm font-semibold text-ink mb-1">{label} →</p>

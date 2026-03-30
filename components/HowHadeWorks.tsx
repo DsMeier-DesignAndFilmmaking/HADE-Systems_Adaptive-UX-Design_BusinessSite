@@ -35,7 +35,7 @@ export function HowHadeWorks() {
       id="how-hade-works"
       eyebrow="How It Works"
       title="Three stages. One adaptive system."
-      intro="Start small, deploy fast, and scale with confidence. Each stage builds on the last."
+      intro="Start small. Scale with confidence."
     >
       <div className="flex flex-col gap-0 md:hidden">
         {steps.map((step, index) => (

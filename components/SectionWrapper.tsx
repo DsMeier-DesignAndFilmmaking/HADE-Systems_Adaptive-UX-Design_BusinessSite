@@ -2,8 +2,8 @@ type SectionWrapperProps = {
   children: React.ReactNode;
   id?: string;
   eyebrow?: string;
-  title?: string;
-  intro?: string;
+  title: React.ReactNode; // Change from string to React.ReactNode
+  intro?: React.ReactNode; // Change from string to React.ReactNode
   className?: string;
 };
 

@@ -375,7 +375,7 @@ export const retentionCaseStudy: FlagshipCaseStudy = {
 };
 
 export const travelCaseStudy: FlagshipCaseStudy = {
-  title: "Adaptive Trip Discovery",
+  title: "A Multi-Model Neural Backbone for Adaptive Urban Discovery",
   subtitle: "Helping Travelers Decide What to Do Next — in Real Time",
   badge: "APPLIED CONCEPT",
   tier: "Adaptive UX Sprint",

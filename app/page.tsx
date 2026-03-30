@@ -3,188 +3,183 @@ import { CTASection } from "@/components/CTASection";
 import { DiagramHADE } from "@/components/DiagramHADE";
 import { DiagramStaticVsAdaptive } from "@/components/DiagramStaticVsAdaptive";
 import { Hero } from "@/components/Hero";
-import { HowHadeWorks } from "@/components/HowHadeWorks";
+import PhilosophyLayer from "@/components/PhilosophyLayer";
 import { SectionWrapper } from "@/components/SectionWrapper";
 import { SprintCTASection } from "@/components/SprintCTASection";
-import { hadeLayers, processSteps, sprintTiers } from "@/lib/site-data";
+
+/**
+ * String-based utility to prevent single-word orphans.
+ * Returns a plain string using the Unicode non-breaking space (\u00A0).
+ */
+const orphanProof = (text: string): string => {
+  const words = text.split(" ");
+  if (words.length <= 1) return text;
+  const lastWord = words.pop();
+  return `${words.join(" ")}\u00A0${lastWord}`;
+};
+
+const engagementTiers = [
+  {
+    id: "01",
+    label: "Stage 01: The Sprint",
+    name: "Audit + Prototype",
+    priceRange: "$4k – $7k",
+    timeline: "3–5 Days",
+    tagline: "Identify high-friction patterns and deploy an agentic prototype that infers intent to assist users in real time.",
+    isFeatured: true,
+  },
+  {
+    id: "02",
+    label: "Stage 02: Deployment",
+    name: "Adaptive Runtime",
+    priceRange: "$8k – $15k",
+    timeline: "1–3 Weeks",
+    tagline: "Transition from prototype to a production-ready adaptive layer that orchestrates the interface based on live behavior signals.",
+    isFeatured: false,
+  },
+  {
+    id: "03",
+    label: "Stage 03: The Lab",
+    name: "Agentic Ecosystem",
+    priceRange: "Custom",
+    timeline: "Ongoing",
+    tagline: "A long-term partnership to transform the product into a self-optimizing environment that evolves with every customer interaction.",
+    isFeatured: false,
+  }
+];
+
+export const EngagementModel = () => {
+  return (
+    <SectionWrapper
+      id="services"
+      eyebrow="The Engagement Model"
+      title={orphanProof("Start small. Scale with confidence.")}
+      intro={orphanProof("Three stages. One agentic system. Scale at the necessary pace.")}
+    >
+      <div className="grid gap-px overflow-hidden rounded-[32px] border border-[#E5E5E7] bg-[#E5E5E7] md:grid-cols-3 shadow-sm">
+        {engagementTiers.map((tier) => (
+          <article
+            key={tier.id}
+            className="group relative flex h-full flex-col bg-white p-8 transition-colors hover:bg-[#F9F9FB]"
+          >
+            <div className="mb-10 flex items-start justify-between">
+              <div>
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-ink/20 group-hover:text-cyberLime transition-colors">
+                  {tier.id}
+                </p>
+                <p className="mt-1 font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-ink/40">
+                  {tier.label}
+                </p>
+              </div>
+              
+              {tier.isFeatured && (
+                <div className="flex items-center gap-1.5 rounded-full border border-cyberLime/30 bg-cyberLime/5 px-3 py-1">
+                  <div className="h-1 w-1 animate-pulse rounded-full bg-cyberLime shadow-[0_0_8px_#A3E635]" />
+                  <span className="font-mono text-[8px] font-bold uppercase tracking-[0.1em] text-cyberLime">
+                    Recommended Start
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-1 flex-col">
+              <h3 className="text-2xl font-semibold tracking-tight text-ink">
+                {tier.name}
+              </h3>
+              
+              <div className="mt-3 flex items-center gap-3">
+                <p className="font-mono text-[10px] font-bold text-ink/40">
+                  {tier.priceRange}
+                </p>
+                <div className="h-1 w-1 rounded-full bg-ink/10" />
+                <p className="font-mono text-[10px] font-bold text-ink/40 italic">
+                  {tier.timeline}
+                </p>
+              </div>
+
+              <p className="mt-6 flex-1 text-sm leading-relaxed text-ink/60">
+                {orphanProof(tier.tagline)}
+              </p>
+
+              <div className="mt-10 pt-6 border-t border-ink/5">
+                <Link
+                  href="/services"
+                  className="inline-flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-ink transition-all hover:gap-3 hover:text-cyberLime"
+                >
+                  View Methodology <span className="text-xs">→</span>
+                </Link>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </SectionWrapper>
+  );
+};
 
 export default function HomePage() {
   return (
     <>
       <Hero />
 
-      <HowHadeWorks />
-
-      <SprintCTASection />
+      <PhilosophyLayer />
 
       <SectionWrapper
         id="problem"
-        eyebrow="The Problem"
-        title="Static product flows miss real user behavior"
-        intro="When onboarding and activation are fixed, teams lose conversions because intent, confidence, and urgency vary from user to user."
+        eyebrow="The Observation"
+        title={orphanProof("Static logic fails to capture high-dimensional intent")}
+        intro={orphanProof("Most interfaces rely on fixed rules that ignore the nuances of human behavior. When a system cannot infer context, conversions vanish.")}
       >
         <div className="grid gap-4 md:grid-cols-2">
           {[
-            "High-intent users are forced through slow setup paths",
-            "Uncertain users get too little guidance at key decisions",
-            "Teams optimize one funnel while hidden drop-off segments grow",
-            "Support volume increases because UX does not adapt to context"
+            "Power users are restricted by redundant guidance meant for beginners",
+            "Friction occurs when the interface fails to anticipate user needs",
+            "Static funnels ignore the variance in urgency and confidence",
+            "Drop-off increases when a journey fails to adapt to live signals"
           ].map((point) => (
-            <div key={point} className="panel p-5 text-sm leading-relaxed text-ink/75">
-              {point}
+            <div key={point} className="panel p-6 text-sm leading-relaxed text-ink/70 border-[#E5E5E7] bg-white">
+              {orphanProof(point)}
             </div>
           ))}
         </div>
       </SectionWrapper>
 
       <SectionWrapper
-        id="shift"
-        eyebrow="The Shift"
-        title="From static screens to adaptive systems"
-        intro="Adaptive UX treats interface decisions as a system: read behavior, infer intent, and route each user through the right experience in real time."
-      >
-        <div className="panel p-6 md:p-8">
-          <p className="max-w-3xl text-base leading-relaxed text-ink/75 md:text-lg">
-            Instead of repeatedly rewriting isolated screens, HADE Systems builds a decision architecture your team can scale. Every improvement compounds because the product learns which path works best for each user state.
-          </p>
-        </div>
-      </SectionWrapper>
-
-      <SectionWrapper
-        id="hade-system"
-        eyebrow="The HADE System"
-        title="A four-layer framework for adaptive UX"
-        intro="HADE stands for Human Signal Mapping, Adaptive Logic Architecture, Decision Layer Orchestration, and Experiment + Evolution — four interconnected layers that make your product respond to real user behavior instead of forcing a fixed path."
-      >
-        {/* Word-origin callout */}
-        <div
-          className="mb-6 rounded-xl bg-white/70 px-5 py-4 backdrop-blur"
-          style={{ border: "0.5px solid rgba(216, 220, 227, 0.7)" }}
-        >
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-ink/35">
-            Origin
-          </p>
-          <p className="mt-2 text-sm leading-relaxed text-ink/60">
-            In geology, a{" "}
-            <em className="not-italic font-medium text-ink/80">hade</em> is the
-            angle at which a fault plane deviates from vertical — the precise tilt
-            that determines how force moves through a system. We chose it because
-            adaptive UX isn&apos;t about a straight path. It&apos;s about finding
-            the right angle for each user&apos;s intent, urgency, and confidence.
-          </p>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-          <DiagramHADE />
-          <div className="grid gap-4">
-            {hadeLayers.map((layer) => (
-              <article key={layer.letter} className="panel p-5">
-                <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-accent">
-                  {layer.letter} — {layer.title}
-                </p>
-                <p className="mt-3 text-sm leading-relaxed text-ink/70">{layer.detail}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </SectionWrapper>
-
-      <SectionWrapper
         id="visual-proof"
-        eyebrow="Visual Proof"
-        title="Static funnels break. Adaptive systems branch intelligently."
-        intro="This is the practical difference between one-size UX and behavior-aware UX."
+        eyebrow="The Shift"
+        title={orphanProof("From hard-coded funnels to agentic orchestration.")}
+        intro={orphanProof("The transition from rigid paths to an intent-aware environment that orchestrates the interface in real time.")}
       >
         <DiagramStaticVsAdaptive />
       </SectionWrapper>
 
-      <SectionWrapper
-        id="services"
-        eyebrow="Services"
-        title="Adaptive UX Systems, Delivered in Stages"
-        intro="Start with a rapid prototype. Scale into a fully adaptive system."
-      >
-        <div className="grid gap-4 md:grid-cols-3">
-          {sprintTiers.map((tier) => (
-            <article
-              key={tier.id}
-              className="flex h-full flex-col overflow-hidden rounded-2xl bg-white/[.92] backdrop-blur"
-              style={{
-                border: tier.isFeatured
-                  ? "0.5px solid rgba(49, 107, 255, 0.35)"
-                  : "0.5px solid rgba(216, 220, 227, 0.75)",
-                boxShadow: tier.isFeatured ? "0 0 24px rgba(49, 107, 255, 0.22)" : undefined
-              }}
-            >
-              {/* Price strip */}
-              <div
-                className="px-5 py-4"
-                style={{
-                  borderBottom: tier.isFeatured
-                    ? "0.5px solid rgba(49, 107, 255, 0.15)"
-                    : "0.5px solid rgba(216, 220, 227, 0.6)"
-                }}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-ink/40">
-                    {tier.priceRange} · {tier.timeline}
-                  </p>
-                  {tier.isFeatured && (
-                    <span
-                      className="rounded-full px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.1em] text-accent"
-                      style={{
-                        background: "rgba(49,107,255,0.08)",
-                        border: "0.5px solid rgba(49,107,255,0.2)"
-                      }}
-                    >
-                      Start Here
-                    </span>
-                  )}
-                </div>
-              </div>
-              {/* Content */}
-              <div className="flex flex-1 flex-col px-5 py-5">
-                <p className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-ink/40">
-                  {tier.label}
-                </p>
-                <h3 className="mt-2 text-lg font-semibold leading-snug text-ink">
-                  {tier.name}
-                </h3>
-                <p className="mt-2 flex-1 text-sm leading-relaxed text-ink/60">
-                  {tier.tagline}
-                </p>
-                <Link
-                  href="/services"
-                  className="mt-5 inline-flex items-center gap-1 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-electricBlue transition hover:text-ink"
-                >
-                  View Details <span className="text-[10px]">→</span>
-                </Link>
-              </div>
-            </article>
-          ))}
-        </div>
-      </SectionWrapper>
+      <EngagementModel />
 
       <SectionWrapper
         id="process"
-        eyebrow="Process"
-        title="Simple delivery, high signal output"
-        intro="You get senior-level product thinking, concrete assets, and execution-ready recommendations."
+        eyebrow="The Methodology"
+        title={orphanProof("How intent-aware systems are refined")}
+        intro={orphanProof("A structured approach to observing behavioral patterns and shaping agentic tools that respond to them.")}
       >
-        <div className="grid gap-4 md:grid-cols-2">
-          {processSteps.map((step, index) => (
-            <article key={step.title} className="panel p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink/60">Step {index + 1}</p>
-              <h3 className="mt-3 text-lg font-semibold text-ink">{step.title}</h3>
-              <p className="mt-3 text-sm leading-relaxed text-ink/70">{step.detail}</p>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[
+            { title: "Observe", detail: "Behavioral analysis identifies exactly where users hesitate during navigation." },
+            { title: "Map", detail: "New logic defines triggers that provide different support for varying states." },
+            { title: "Build", detail: "Responsive elements transform a static screen into a living experience." },
+            { title: "Refine", detail: "Constant measurement ensures the new path continues to sharpen performance." }
+          ].map((step, index) => (
+            <article key={step.title} className="panel p-6 border-[#E5E5E7] bg-white">
+              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-ink/20 mb-4">Step 0{index + 1}</p>
+              <h3 className="text-base font-semibold text-ink leading-tight">{step.title}</h3>
+              <p className="mt-4 text-[13px] leading-relaxed text-ink/60">{orphanProof(step.detail)}</p>
             </article>
           ))}
         </div>
       </SectionWrapper>
 
       <CTASection
-        title="Book an Adaptive UX Sprint"
-        body="In 3–5 days, get a working adaptive UX prototype embedded into your product — with a behavior audit, live experiment design, and a clear path to scale."
+        title={orphanProof("Deploy an Adaptive Sprint")}
+        body={orphanProof("Transition from observing friction to a working agentic prototype that changes how users experience the product.")}
       />
     </>
   );
