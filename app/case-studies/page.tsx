@@ -79,9 +79,8 @@ export default function CaseStudiesPage() {
                 </h1>
                 </Reveal>
                 <Reveal delay={160}>
-                <p className="mt-6 max-w-3xl text-lg leading-relaxed text-ink/75">
-                  Real-world applications of HADE Systems across activation, retention, and 
-                  full-system{"\u00a0"}transformation.
+                <p className="mt-6 max-w-3xl text-lg leading-relaxed text-ink/75 tracking-tight font-normal">
+                  Real-world applications of HADE as a single engine deployed across diverse environments. These studies demonstrate how the core decision logic transforms specific industry{"\u00a0"}workflows.
                 </p>
                 </Reveal>
               </div>

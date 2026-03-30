@@ -148,13 +148,13 @@ export const sprintTiers: SprintTier[] = [
     priceRange: "$4k – $7k",
     timeline: "3–5 days",
     isFeatured: true,
-    tagline: "The fastest path from static UX to a working adaptive prototype.",
+    tagline: "Stop guessing. Map your decision logic and ship a working AI-driven prototype in\u00A0one\u00A0week.",
     deliverables: [
-      "Rapid UX + behavior audit",
-      "1 working adaptive prototype",
-      "1–2 micro-experiments designed and ready to run",
-      "Decision logic map for the prototype",
-      "Loom walkthrough + system explanation"
+      "Rapid UX + Behavior Audit",
+      "AI UX Strategy & Context-Aware Roadmap",
+      "1 Working Adaptive Prototype (High-Fidelity)",
+      "Core Decision Logic Map",
+      "Loom Walkthrough + Executive Summary"
     ],
     ctaLabel: "Book Sprint",
     ctaHref: "/contact"
@@ -166,12 +166,13 @@ export const sprintTiers: SprintTier[] = [
     priceRange: "$8k – $15k",
     timeline: "1–3 weeks",
     isFeatured: false,
-    tagline: "Turn the prototype into a live, measurable adaptive system.",
+    tagline: "Move beyond static interfaces. Deploy a live, behavior-triggered module built to\u00A0spike\u00A0activation.",
     deliverables: [
-      "Production-ready adaptive module built and deployed",
-      "Behavior-triggered UI logic",
-      "A/B or variant testing with success criteria",
-      "Performance tracking + engineering handoff specs"
+      "Production-ready Adaptive Module built and deployed",
+      "Real-time behavior-triggered UI logic",
+      "Targeted experiment for Churn Reduction or Activation lift",
+      "Performance tracking + Engineering handoff specs",
+      "Post-deployment impact report"
     ],
     ctaLabel: "Start Deployment",
     ctaHref: "/contact"
@@ -183,12 +184,13 @@ export const sprintTiers: SprintTier[] = [
     priceRange: "Custom",
     timeline: "Ongoing",
     isFeatured: false,
-    tagline: "Expand into a full adaptive UX ecosystem that compounds over time.",
+    tagline: "Own the ecosystem. A dedicated engine for compounding retention and\u00A0long-term\u00A0LTV.",
     deliverables: [
-      "Full adaptive UX system design",
-      "Multi-context personalization",
-      "Continuous experimentation + iteration loops",
-      "Iterative optimization cycles"
+      "Holistic Adaptive UX System Design",
+      "Multi-context personalization architecture",
+      "Continuous experiment cycles for long-term retention",
+      "Ongoing logic optimization + AI performance tuning",
+      "Dedicated strategic partnership"
     ],
     ctaLabel: "Discuss System",
     ctaHref: "/contact"
@@ -222,7 +224,7 @@ export const flagshipCaseStudy: FlagshipCaseStudy = {
   sector: "E-Commerce · Synthesized",
   accentColor: "#316BFF",
   problemSentence:
-    "Users browse hundreds of options with no system helping them decide. The catalog grows; the signal doesn't. Most visitors leave without buying — not because the product wasn't right, but because the choice never got clear.",
+"Users browse hundreds of options with no system helping them decide. The catalog grows; the signal doesn't. Most visitors leave without buying — not because the product wasn't right, but because the choice never got\u00A0clear.",
   problemStats: [
     { stat: "Too many choices", label: "Large catalogs generate comparison fatigue before intent can form" },
     { stat: "No prioritization", label: "Every product surfaces equally — the system has no ranking logic tied to user state" },
@@ -289,9 +291,9 @@ export const flagshipCaseStudy: FlagshipCaseStudy = {
     "A behavioral signal layer that improves with each session — sharpening recommendations over time",
   ],
   closingInsight:
-    "Conversion failure is rarely a product problem. It's a decision problem — users are ready to buy but can't find their way to yes. The engine changes that: it reads where they are and clears the path forward.",
-  ctaTitle: "Deploy a Purchase Decision Engine",
-  ctaSubtext: "Map your catalog drop-off patterns and model adaptive decision routing — in 2–3 weeks.",
+"Conversion failure is rarely a product problem. It's a decision problem — users are ready to buy but can't find their way to yes. The engine changes that: it reads where they are and clears the path\u00A0forward.",
+  ctaTitle: "Deploy a Purchase Decision\u00A0Engine",
+  ctaSubtext: "Map your catalog drop-off patterns and model adaptive decision routing — in 2–3\u00A0weeks.",
   ctaButton: "Book a Sprint",
 };
 
@@ -387,7 +389,7 @@ export const travelCaseStudy: FlagshipCaseStudy = {
     { stat: "Re-decision fatigue", label: "Every unplanned moment required the user to manually re-evaluate all options from scratch — the system had no memory of what had already been ruled out" },
   ],
   problemSentence:
-    "Travel doesn't follow a plan. Context changes constantly — time of day, energy level, what you just experienced, what's within walking distance right now. A system built only for pre-trip decisions goes silent the moment the trip actually begins.",
+"Travel doesn't follow a plan. Context changes constantly — time of day, energy level, what you just experienced, what's within walking distance right now. A system built only for pre-trip decisions goes silent the moment the trip actually\u00A0begins.",
   approachIntro:
     "We designed an Adaptive Trip Discovery System — a real-time behavioral layer that reads contextual signals continuously, classifies the user's current state in the field, and surfaces the best next move rather than a menu of all possible moves.",
   approachPillars: [
@@ -449,7 +451,7 @@ export const travelCaseStudy: FlagshipCaseStudy = {
     "A product that stays useful after the trip begins — closing the gap between pre-trip discovery tools and real-time in-field guidance",
   ],
   closingInsight:
-    "Travel tools are excellent for planning the night before and largely useless by noon the next day. That gap isn't a feature gap — it's an architectural one. A system that operates on live context rather than stored plans is a categorically different product. It doesn't help you decide what to do. It responds to what is actually happening.",
+"Travel tools are excellent for planning the night before and largely useless by noon the next day. That gap isn't a feature gap — it's an architectural one. A system that operates on live context rather than stored plans is a categorically different product. It doesn't help you decide what to do. It responds to what is actually\u00A0happening.",
   ctaTitle: "Apply Real-Time Adaptive Thinking to Your Platform",
   ctaSubtext: "Design a system that reads live context and responds — not one that waits for the user to search.",
   ctaButton: "Book a Discovery Call",
