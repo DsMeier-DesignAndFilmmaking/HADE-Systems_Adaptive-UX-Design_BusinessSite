@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 type CTASectionProps = {
-  title: string;
+  title: React.ReactNode; 
   body: string;
   primaryLabel?: string;
   secondaryLabel?: string;

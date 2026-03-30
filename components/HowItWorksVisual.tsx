@@ -44,7 +44,7 @@ const SCENARIOS = [
       { callout: "12s pause + repeated focus on pricing field", color: "teal" as const },
       { callout: "Evaluator intent → social proof routing", color: "teal" as const },
       { callout: "Testimonial card + ROI prompt injected", color: "indigo" as const },
-      { callout: "Variant logged — conversion signal pending", color: "amber" as const },
+      { callout: "Decision Logged — Closing the Feedback Loop", color: "amber" as const },
     ],
   },
   {
@@ -76,7 +76,7 @@ const calloutActive = {
 };
 const calloutIdle = {
   teal:   "text-teal-700/80 bg-teal-500/4 border-teal-500/10",
-  indigo: "text-indigo-700/80 bg-indigo-500/4 border-indigo-500/10",
+  indigo: "text-indigo-700/100 bg-indigo-800/4 border-indigo-500/20",
   amber:  "text-amber-700/80 bg-amber-500/4 border-amber-500/10",
 };
 
@@ -484,6 +484,8 @@ const ArchNode = ({
   );
 };
 
+
+
 /* ─── SECTION 1: SYSTEM ARCHITECTURE (INTERACTIVE) ──────────────── */
 
 // step -1 = idle, 0–6 = signal in progress, 7 = complete
@@ -548,9 +550,9 @@ const SystemArchitecture = () => {
             className="text-[10px] uppercase tracking-[0.28em] text-teal-500 mb-1"
             style={{ fontFamily: THEME.fonts.mono }}
           >
-            Signal Simulator
+            System Simulator
           </p>
-          <h3 className="text-lg font-semibold text-white">
+          <h3 className="text-lg font-semibold tracking-tight text-white">
             How HADE processes context in real time
           </h3>
         </div>
@@ -712,6 +714,116 @@ const SystemArchitecture = () => {
   );
 };
 
+/* ─── STREAMLINED: HADE ENGINE ARCHITECTURE (THE BLUEPRINT OVERLAY) ─── */
+const HADEEngineArchitecture = () => {
+  const engineSpec = [
+    {
+      id: "01",
+      label: "INPUTS // OBSERVATION",
+      title: "Listening to Signals",
+      body: "Before making a move, HADE listens. It looks at how a person is moving and what they need right now, filtering out the noise to get a clear picture of the situation.",
+      logic: "Insight: Seeing the full picture",
+    },
+    {
+      id: "02",
+      label: "PROCESSING // REASONING",
+      title: "Thinking it Through",
+      body: "This is the brain of the system. It weighs the current situation against your goals to find the most helpful and relevant path for the user at that exact second.",
+      logic: "Insight: Real-time relevance",
+    },
+    {
+      id: "03",
+      label: "OUTPUTS // ACTION",
+      title: "Making the Move",
+      body: "HADE doesn't just think; it acts. It instantly coordinates between different AI models and tools to deliver the right experience to the right person.",
+      logic: "Insight: Smart delegation",
+    },
+    {
+      id: "04",
+      label: "SYSTEM // STRUCTURE",
+      title: "Command Center",
+      body: "This is the source of truth. It’s where deep systems thinking and technical diagrams are stored and transformed into a functional, reliable engine.",
+      logic: "Insight: Strategy into reality",
+    },
+  ];
+
+  return (
+    <section className="rounded-2xl p-8 md:p-12 border border-slate-200 bg-white">
+      {/* Integrated Header */}
+      <div className="mb-12 border-b border-slate-100 pb-8">
+        <div className="flex items-center gap-3 mb-4">
+           <span className="font-mono text-[10px] tracking-[0.28em] text-teal-600 uppercase font-bold">
+            THE SYSTEM
+          </span>
+          <div className="h-px flex-1 bg-slate-100" />
+        </div>
+        <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-ink mb-8 leading-tight">
+          The HADE Architecture
+        </h2>
+        <p className="text-base text-slate-700 font-normal tracking-tight leading-relaxed max-w-2xl">
+          A proprietary cognitive engine that understands user intent and 
+          adapts your product experience in real time.
+        </p>
+      </div>
+
+      {/* The Blueprint Grid */}
+      {/* Added h-full and flex to columns to ensure equal heights */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-4 relative">
+        {engineSpec.map((spec, i) => (
+          <div key={spec.id} className="relative group flex flex-col h-full">
+            {/* Connection Arrow (Desktop) */}
+            {i < 3 && (
+              <div className="hidden md:block absolute -right-2 top-1/4 translate-y-1 text-slate-200 z-0">
+                →
+              </div>
+            )}
+            
+            <div className="flex flex-col h-full space-y-4 pr-4">
+              <span className="font-mono text-[9px] text-slate-400 tracking-widest font-bold block">
+                {spec.label}
+              </span>
+              
+              <h3 className="text-lg text-ink font-semibold tracking-tight">
+                {spec.title}
+              </h3>
+
+              {/* Added min-h to the body text to prevent height shifting */}
+              <p className="text-sm text-slate-600 leading-relaxed font-normal tracking-tight min-h-[80px] md:min-h-[100px]">
+                {spec.body}
+              </p>
+              
+              {/* Spacer pushes the logic tag to the very bottom of the card */}
+              <div className="flex-grow" />
+              
+              <div className="inline-flex items-center gap-2 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-sm self-start">
+                <div className="h-1 w-1 rounded-full bg-teal-500 animate-pulse" />
+                <span className="font-mono text-[9px] text-teal-700 uppercase tracking-wider font-bold">
+                  {spec.logic}
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Surface Tags Footer */}
+      <div className="mt-12 pt-8 border-t border-slate-100 flex flex-wrap items-center gap-4">
+        <span className="font-mono text-[9px] text-slate-400 uppercase tracking-widest">
+          Deployment Surfaces:
+        </span>
+        {["SDK", "Web Applications", "Native Apps (Mobile)", "Internal Tools"].map((surface) => (
+          <div 
+            key={surface}
+            className="px-3 py-1 rounded-full border border-slate-200 text-[10px] font-medium text-slate-500 bg-slate-50/50"
+          >
+            {surface}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+};
+
 /* ─── SECTION 2: PROCESS TIMELINE ───────────────────────────────── */
 const stepIcons = [
   <Search key="s" className="w-5 h-5 text-accent" />,
@@ -810,97 +922,56 @@ const DeliverablesGrid = () => (
   </div>
 );
 
-const HADEArchitectureMap = () => {
+/* ─── L3: PRODUCT STRATEGY (THE SDK ROADMAP) ─── */
+const HADEProductRoadmap = () => {
   return (
-    <section
-      className="rounded-2xl px-6 py-10 md:px-10"
-      style={{ background: THEME.colors.dark, border: `1px solid ${THEME.colors.border}` }}
-    >
-      {/* Header */}
-      <div className="mb-8">
-        <p className="text-[10px] uppercase tracking-[0.28em] text-teal-500 mb-2">
-          System Overview
+    <section className="p-8 md:p-12 rounded-2xl border border-slate-200 bg-slate-50/50">
+      <div className="flex flex-col md:flex-row gap-12">
+        <div className="md:w-1/2 space-y-6">
+          <span className="font-mono text-[10px] tracking-[0.28em] text-indigo-600 uppercase font-bold">
+            Roadmap // THE PRODUCT
+          </span>
+          <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-ink mb-8 leading-tight">
+            From Custom Engine to <br/>Scalable SDK
+          </h2>
+          <p className="text-base text-slate-700 font-normal tracking-tight leading-relaxed max-w-2xl text-wrap-pretty">
+          HADE is evolving from a bespoke decision framework into a plug-and-play SDK. 
+          While I currently deploy the engine through focused "Sprints," our goal is to 
+          empower every product team to ingest context and generate intent-aware 
+          decisions via a simple&nbsp;API.
         </p>
-        <h2 className="text-2xl font-semibold text-white mb-3">
-          The HADE Decision Architecture
-        </h2>
-        <p className="text-sm text-slate-400 max-w-xl">
-          Human-aware systems adapt to real-time user context — transforming live signals into intelligent product decisions.
-        </p>
-      </div>
+        </div>
 
-      {/* Core Flow */}
-      <div className="flex flex-col md:flex-row items-center gap-4 md:gap-2">
-        {[
-          {
-            label: "Inputs",
-            title: "Signals",
-            desc: "Behavior, intent, and environmental context",
-          },
-          {
-            label: "Processing",
-            title: "HADE Engine",
-            desc: "Context interpretation and decision logic",
-          },
-          {
-            label: "Outputs",
-            title: "Decisions",
-            desc: "Adaptive actions generated in real time",
-          },
-          {
-            label: "System",
-            title: "Interfaces",
-            desc: "UI, flows, and system behavior updates",
-          },
-        ].map((item, i) => (
-          <React.Fragment key={item.title}>
-            <div className="flex-1 rounded-xl p-5 bg-[#0d0d0e] border border-white/10">
-              <p className="text-[9px] uppercase tracking-widest text-teal-500 mb-1">
-                {item.label}
-              </p>
-              <h4 className="text-white font-semibold text-sm mb-1">
-                {item.title}
-              </h4>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                {item.desc}
-              </p>
+        <div className="md:w-1/2 grid grid-cols-1 gap-4">
+          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+            <h4 className="text-sm font-bold text-slate-900 mb-2">Phase 01: Adaptive Sprints</h4>
+            <p className="text-xs text-slate-500 mb-4 font-light">Custom implementation of the HADE core for specific high-growth products. <strong>Available Now.</strong></p>
+            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+              <div className="h-full bg-teal-500 w-full" />
             </div>
+          </div>
 
-            {i < 3 && (
-              <div className="hidden md:block w-6 h-px bg-white/10" />
-            )}
-          </React.Fragment>
-        ))}
-      </div>
-
-      {/* Surfaces */}
-      <div className="mt-10">
-        <p className="text-[10px] uppercase tracking-[0.22em] text-teal-500 mb-3">
-          Surfaces
-        </p>
-
-        <div className="flex flex-wrap gap-3">
-          {["SDK", "Applications", "Internal Tools"].map((item) => (
-            <div
-              key={item}
-              className="px-4 py-2 rounded-full border border-white/10 text-xs text-slate-300 bg-white/5"
-            >
-              {item}
+          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm opacity-60">
+            <h4 className="text-sm font-bold text-slate-900 mb-2">Phase 02: SDK Private Alpha</h4>
+            <p className="text-xs text-slate-500 mb-4 font-light">Embeddable decision APIs and signal-weighting hooks for React and Mobile. <strong>In Development.</strong></p>
+            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+              <div className="h-full bg-indigo-500 w-1/3" />
             </div>
-          ))}
+          </div>
         </div>
       </div>
     </section>
   );
 };
 
+
 /* ─── MAIN EXPORT ────────────────────────────────────────────────── */
 export function HowItWorksVisual() {
   return (
     <div className="space-y-16">
 
-      {/* NEW: Architecture Map (Top Layer) */}
-      <HADEArchitectureMap />
+   {/* Streamlined Master Architecture Component */}
+   <HADEEngineArchitecture />
 
       <section>
         <SystemArchitecture />
@@ -910,24 +981,38 @@ export function HowItWorksVisual() {
         <p className="text-[10px] uppercase tracking-[0.22em] text-accent mb-1" style={{ fontFamily: THEME.fonts.mono }}>
           Delivery Flow
         </p>
-        <h2 className="text-2xl font-semibold text-ink mb-8">
+        <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-ink mb-8 leading-tight">
           A focused path from friction discovery to rollout
         </h2>
         <ProcessTimeline />
       </section>
 
+      <section className="mb-24"> {/* Large margin to separate from other sections */}
+  
+  {/* Eyebrow: Reduced tracking slightly for readability, increased mb for breathing room */}
+  <p className="text-[10px] uppercase tracking-[0.2em] text-accent mb-3" style={{ fontFamily: THEME.fonts.mono }}>
+    Deliverables
+  </p>
+  
+  {/* Headline: Reduced mb-8 to mb-4 to "lock" it to the body text below */}
+  <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-ink mb-4 leading-tight">
+    Implementation-ready assets at every phase
+  </h2>
+  
+  {/* Body: Increased mb to mb-12 to create a clear "break" before the grid starts */}
+  <p className="text-base text-slate-700 font-normal tracking-tight leading-relaxed max-w-4xl mb-12">
+    Each phase creates clear, actionable output so design, product, and engineering can move without&nbsp;ambiguity.
+  </p>
+  
+  {/* Grid: Now has a clean, wide entry point */}
+  <DeliverablesGrid />
+  
+</section>
+
       <section>
-        <p className="text-[10px] uppercase tracking-[0.22em] text-accent mb-1" style={{ fontFamily: THEME.fonts.mono }}>
-          What your team receives
-        </p>
-        <h2 className="text-2xl font-semibold text-ink mb-2">
-          Implementation-ready assets at every phase
-        </h2>
-        <p className="text-sm text-ink/60 mb-8 max-w-2xl">
-          Each phase creates clear, actionable output so design, product, and engineering can move without ambiguity.
-        </p>
-        <DeliverablesGrid />
+        <HADEProductRoadmap />
       </section>
+
     </div>
   );
 }

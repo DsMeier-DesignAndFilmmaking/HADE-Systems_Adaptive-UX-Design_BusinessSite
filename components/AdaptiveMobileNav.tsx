@@ -8,7 +8,7 @@ import { type CTAState, useScrollSection } from "@/hooks/useScrollSection";
 // ─── Data ────────────────────────────────────────────────────────────────────
 
 const CTA_CONFIG: Record<CTAState, { label: string; href: string }> = {
-  awareness: { label: "Watch Demo", href: "/how-it-works" },
+  awareness: { label: "View Demo", href: "/how-it-works" },
   trust: { label: "View Architecture", href: "/how-it-works#hade-system" },
   conversion: { label: "Book Strategy Call", href: "/contact" },
 };
@@ -35,7 +35,7 @@ const LOG_LINES: Record<CTAState, string[]> = {
   awareness: [
     "> Context: New Visitor",
     "> Intent: Discovery",
-    "> CTA: Watch Demo",
+    "> CTA: Demo",
     "> Nav: Optimized",
   ],
   trust: [

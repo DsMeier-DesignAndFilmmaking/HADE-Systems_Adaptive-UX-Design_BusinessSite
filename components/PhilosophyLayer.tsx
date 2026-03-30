@@ -42,7 +42,7 @@ const PhilosophyLayer = () => {
                   <div className="flex items-center gap-3 mb-8">
                     <Compass size={16} className="text-cyberLime/80" strokeWidth={1.5} />
                     <p className="font-mono text-[9px] uppercase tracking-[.4em] text-white/40 font-bold">
-                      Foundation // Volume 01   
+                      Foundation // Why HADE exists
                     </p>
                   </div>
 
@@ -53,7 +53,9 @@ const PhilosophyLayer = () => {
                     "Design that actually listens."
                   </p>
                   <p className="mt-6 text-base text-white/50 leading-relaxed max-w-sm">
-                    Most software forces everyone down the same path. We believe technology should observe how you move and adjust itself to meet you where you are.
+                    Most tools are built for a generic user state, forcing every interaction down the same rigid path. A truly intelligent interface should instead observe how a person moves and adjust itself to meet them exactly where they are.
+                    <br></br> <br></br> 
+                    By shifting from fixed logic to intent-aware orchestration, the environment transforms from a static obstacle into a responsive partner that anticipates a user's needs in real{'\u00A0'}time.
                   </p>
                 </div>
 
@@ -96,7 +98,7 @@ const PhilosophyLayer = () => {
               <div className="bg-[#0D0D0E] p-10 md:p-14">
                 <div className="flex items-center gap-2 mb-10">
                   <Activity size={12} className="text-white/20" />
-                  <p className="font-mono text-[9px] uppercase tracking-[.4em] text-white/20 font-bold">How we see the world</p>
+                  <p className="font-mono text-[9px] uppercase tracking-[.4em] text-white/20 font-bold">THe belief system</p>
                 </div>
 
                 <div className="grid gap-px bg-white/5 rounded-2xl border border-white/5 overflow-hidden">

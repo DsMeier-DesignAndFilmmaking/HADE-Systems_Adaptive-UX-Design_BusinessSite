@@ -126,7 +126,7 @@ export default function HomePage() {
 
       <SectionWrapper
         id="problem"
-        eyebrow="The Observation"
+        eyebrow="The Problem"
         title={orphanProof("Static logic fails to capture high-dimensional intent")}
         intro={orphanProof("Most interfaces rely on fixed rules that ignore the nuances of human behavior. When a system cannot infer context, conversions vanish.")}
       >
