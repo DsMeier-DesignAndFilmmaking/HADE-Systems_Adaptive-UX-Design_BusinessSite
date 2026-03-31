@@ -6,7 +6,7 @@ const PhilosophyLayer = () => {
   const principles = [
     { 
       label: "Adaptation", 
-      text: "The software follows the person, not the other way around.", 
+      text: "The tools follow the person, not the other way around.", 
       icon: <Zap size={14} className="text-cyberLime" strokeWidth={2.5} /> 
     },
     { 
@@ -53,9 +53,9 @@ const PhilosophyLayer = () => {
                     "Design that actually listens."
                   </p>
                   <p className="mt-6 text-base text-white/50 leading-relaxed max-w-sm">
-                    Most tools are built for a generic user state, forcing every interaction down the same rigid path. A truly intelligent interface should instead observe how a person moves and adjust itself to meet them exactly where they are.
+                    Most tools are built for a generic user state, forcing every interaction down the same rigid path. A truly intelligent interface should instead observe the current context and how a person moves and adjust itself to meet them exactly where they are.
                     <br></br> <br></br> 
-                    By shifting from fixed logic to intent-aware orchestration, the environment transforms from a static obstacle into a responsive partner that anticipates a user's needs in real{'\u00A0'}time.
+                    By shifting from fixed logic to intent-aware orchestration, the environment transforms from a static obstacle into a responsive partner that anticipates a user's wants and needs in real{'\u00A0'}time.
                   </p>
                 </div>
 

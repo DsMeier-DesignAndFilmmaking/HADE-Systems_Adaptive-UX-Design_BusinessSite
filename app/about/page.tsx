@@ -13,16 +13,16 @@ export default function AboutPage() {
       <section className="reveal pt-6 md:pt-10">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">About HADE Systems</p>
         <h1 className="mt-4 max-w-4xl text-4xl font-semibold leading-tight text-ink md:text-5xl">
-          Built for teams that need UX to perform like a system.
+          Built for UX to perform like a system.
         </h1>
         <p className="mt-6 max-w-3xl text-lg leading-relaxed text-ink/75">
-          HADE Systems combines product strategy and adaptive UX design to help teams improve onboarding, activation, and retention with measurable rigor.
+          HADE Systems combines product strategy and adaptive UX design to help improve onboarding, activation, and retention with measurable rigor.
         </p>
       </section>
 
       <SectionWrapper
         className="reveal"
-        title="What we believe"
+        title="Belief System"
         intro="Growth does not come from prettier screens. It comes from interfaces that respond to real user context."
       >
         <div className="grid gap-4 md:grid-cols-3">
@@ -51,7 +51,7 @@ export default function AboutPage() {
       <SectionWrapper
         className="reveal"
         title="Who this is for"
-        intro="HADE engagements are best for teams with active product usage and clear growth goals."
+        intro="HADE engagements are best with active product usage and clear growth goals."
       >
         <div className="panel p-6 md:p-8">
           <div className="grid gap-4 md:grid-cols-2">

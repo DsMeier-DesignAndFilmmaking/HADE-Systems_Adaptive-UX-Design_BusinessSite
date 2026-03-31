@@ -121,7 +121,7 @@ function BusinessNode({
 
 function Connector({ color }: { color: "teal" | "indigo" }) {
   return (
-    <div className="relative h-10 w-px bg-white/10">
+    <div className="relative h-10 w-px overflow-hidden bg-white/10">
       <div
         className={`absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-full blur-[1px] ${
           color === "teal" ? "bg-teal-500" : "bg-indigo-500"

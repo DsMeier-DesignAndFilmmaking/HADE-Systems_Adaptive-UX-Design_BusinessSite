@@ -12,16 +12,18 @@ export function Hero() {
             <div className="flex items-center gap-2">
               <span className="h-1.5 w-1.5 rounded-full bg-cyberLime" />
               <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink/50">
-                Adaptive UX Design · HADE Systems
+                Adaptive UX · Systems Design
               </p>
             </div>
           </Reveal>
 
           <Reveal delay={80}>
-            <h1 className="mt-5 text-4xl font-semibold leading-tight tracking-[-0.01em] text-ink md:text-[3.5rem] md:leading-[1.1]">
-              Your product<br className="hidden md:block" /> shouldn&apos;t feel static.
-            </h1>
-          </Reveal>
+          <h1 className="mt-5 text-4xl font-semibold leading-tight tracking-[-0.01em] text-ink md:text-[3.5rem] md:leading-[1.1]">
+            Your product{" "}
+            <br className="hidden md:block" />
+            shouldn&apos;t feel static.
+          </h1>
+        </Reveal>
 
           {/*
             ── Copy Variant C (active) — Outcome-first, problem-aware ──────────
@@ -44,9 +46,7 @@ export function Hero() {
           */}
           <Reveal delay={140}>
             <p className="mt-5 max-w-xl text-base leading-relaxed text-ink/60 md:text-lg">
-              HADE designs and builds the adaptive decision layer for static moments between your product and your users: a
-              live system that maps real behavior, makes routing decisions in real
-              time, and gets measurably better with every experiment cycle.
+            HADE is a decision engine that transforms real-time human context into adaptive system behavior, improving measurably with every experiment and feedback loop.
             </p>
           </Reveal>
 

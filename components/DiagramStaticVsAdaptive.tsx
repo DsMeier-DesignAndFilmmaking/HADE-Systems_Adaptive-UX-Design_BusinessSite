@@ -16,7 +16,7 @@ export function DiagramStaticVsAdaptive() {
   return (
     <Reveal>
       <div className="grid gap-4 md:grid-cols-2">
-        <div className="panel p-5">
+        <div className="panel p-5 overflow-hidden">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink/60">Static Flow</p>
           <div className="mt-4 flex items-center gap-2 overflow-auto pb-1">
             <Node label="Landing" />
@@ -32,7 +32,7 @@ export function DiagramStaticVsAdaptive() {
           </p>
         </div>
 
-        <div className="panel p-5">
+        <div className="panel p-5 overflow-hidden">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Adaptive System</p>
           <div className="mt-4 space-y-3 text-xs">
             <div className="flex items-center gap-2">
