@@ -15,7 +15,8 @@ const config: Config = {
         obsidian: "#080b11",
         slateGlass: "#1c2236",
         cyberLime: "#F59E0B",
-        electricBlue: "#316BFF"
+        electricBlue: "#316BFF",
+        sage: "#6B8E6F"
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],

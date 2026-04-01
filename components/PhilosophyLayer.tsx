@@ -4,7 +4,7 @@ import Reveal from '@/src/components/hade/animation/Reveal';
 const PhilosophyLayer = () => {
   const principles = [
     { label: 'Adaptation', text: 'The tools follow the person, not the other way around.', icon: <Zap size={14} className='text-cyberLime' strokeWidth={2.5} /> },
-    { label: 'Utility', text: 'Helping the system work with people.', icon: <ShieldCheck size={14} className='text-cyberLime' strokeWidth={2.5} /> },
+    { label: 'Utility', text: 'Helping the system work with people and context.', icon: <ShieldCheck size={14} className='text-cyberLime' strokeWidth={2.5} /> },
     { label: 'Depth', text: "Understand the 'why' behind every click.", icon: <Maximize size={14} className='text-cyberLime' strokeWidth={2.5} /> },
     { label: 'Scale', text: 'Build for the journey, not just the screen.', icon: <Layers size={14} className='text-cyberLime' strokeWidth={2.5} /> },
   ];

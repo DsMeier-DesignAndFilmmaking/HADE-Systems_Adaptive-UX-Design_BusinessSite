@@ -80,7 +80,7 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
 
           <div>
             <label htmlFor="productLink" className="text-sm font-medium text-ink/80">
-              Link to Product
+              Link to Product or Company
             </label>
             <input
               id="productLink"

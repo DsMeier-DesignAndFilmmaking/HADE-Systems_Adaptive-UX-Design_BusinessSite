@@ -46,7 +46,7 @@ export function Hero() {
           */}
           <Reveal delay={140}>
             <p className="mt-5 max-w-xl text-base leading-relaxed text-ink/60 md:text-lg">
-            HADE is a decision engine that transforms real-time human context into adaptive system behavior, improving measurably with every experiment and feedback loop.
+            HADE is an adaptive decision layer that transforms human intent and multidimensional context across environmental, temporal, and behavioral frameworks into precise system actions that evolve through a continuous, closed-loop feedback system.
             </p>
           </Reveal>
 
