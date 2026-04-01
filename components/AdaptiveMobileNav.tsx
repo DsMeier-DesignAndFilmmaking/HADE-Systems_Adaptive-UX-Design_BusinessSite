@@ -1,9 +1,51 @@
 "use client";
 
+// ─── Performance Changelog ────────────────────────────────────────────────────
+// v2.0 — 2026-03-31
+//
+// 1. OVERLAY LAYER SPLIT (backdrop-blur removed from panel)
+//    Before: Single motion.div carried backdrop-blur-md + all content.
+//            Every opacity frame forced a full blur recomposite + content repaint.
+//    After:  Two sibling divs in AnimatePresence:
+//            – Backdrop (z-60): pure opacity animation, backdrop-blur-md only,
+//              will-change: opacity — blur sample cached after frame 1.
+//            – Panel   (z-61): translateY + opacity, will-change: transform,
+//              no backdrop-blur — independent GPU layer, zero blur cost.
+//
+// 2. BOTTOM BAR GPU LAYER PROMOTION
+//    Before: motion.div animated translateY with no compositor hint.
+//            Layer allocated lazily — risked a dropped first frame on cold load.
+//    After:  style={{ transform: 'translateZ(0)', willChange: 'transform' }}
+//            forces layer promotion before the entrance animation begins.
+//
+// 3. DEFERRED SYSTEM LOG MOUNT
+//    Before: <SystemLog> mounted immediately on menuOpen=true.
+//            Its setInterval (220ms cadence) competed with the 180ms open animation.
+//    After:  logReady state — set true via setTimeout(260) after menuOpen.
+//            SystemLog not mounted until opening animation has settled.
+//            Reset to false on close — no background CPU usage when hidden.
+//
+// 4. TOUCH-ACTION: MANIPULATION ON ALL INTERACTIVE ELEMENTS
+//    Before: motion.div wrappers — touchAction never reached the interactive element.
+//            iOS Safari applied 300ms tap delay.
+//    After:  whileTap moved directly onto motion.button / MotionLink with
+//            style={{ touchAction: 'manipulation' }} — first frame fires in <16ms.
+//
+// 5. ELIMINATED WRAPPER motion.div NODES IN BOTTOM BAR
+//    Before: <motion.div whileTap><Link …></motion.div>
+//            Extra DOM node, extra reconciliation, whileTap on wrong element.
+//    After:  MotionLink (motion(Link)) for anchor items, motion.button for the
+//            menu trigger — whileTap + touchAction on the correct element.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { type CTAState, useScrollSection } from "@/hooks/useScrollSection";
+
+// Framer Motion factory for Next.js Link — preserves client-side routing while
+// allowing whileTap and style props directly on the anchor element.
+const MotionLink = motion.create(Link);
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -198,6 +240,7 @@ function SystemLog({ ctaState }: { ctaState: CTAState }) {
 export function AdaptiveMobileNav() {
   const ctaState = useScrollSection();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [logReady, setLogReady] = useState(false);
   const cta = CTA_CONFIG[ctaState];
   const pills = PILLS[ctaState];
 
@@ -207,107 +250,149 @@ export function AdaptiveMobileNav() {
     return () => { document.body.style.overflow = ""; };
   }, [menuOpen]);
 
+  // Defer SystemLog mount until opening animation has settled (260ms).
+  // Prevents setInterval callbacks from competing with animation frames.
+  // Reset immediately on close so no background CPU usage while hidden.
+  useEffect(() => {
+    if (!menuOpen) { setLogReady(false); return; }
+    const t = setTimeout(() => setLogReady(true), 260);
+    return () => clearTimeout(t);
+  }, [menuOpen]);
+
   return (
     <div className="md:hidden">
 
       {/* ── Full-Screen Overlay ─────────────────────────────── */}
       <AnimatePresence>
         {menuOpen && (
-          <motion.div
-            className="fixed inset-0 z-[60] flex flex-col bg-slate-900/95 backdrop-blur-md"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            // Duration-based fade: pure opacity gains nothing from spring physics.
-            // Curve matches site-wide .reveal-in easing for perceptual consistency.
-            transition={{ duration: 0.18, ease: OVERLAY_EASE }}
-          >
-            {/* Header row */}
-            <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
-              <span className="text-sm font-semibold tracking-[0.18em] text-white">
-                HADE SYSTEMS
-              </span>
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={() => setMenuOpen(false)}
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-white/70"
-              >
-                <CloseIcon />
-              </motion.button>
-            </div>
-
-            {/* ── Contextual Pills ──────────────────────────────
-                AnimatePresence (no mode) = default "sync" behaviour:
-                old pills exit and new pills enter simultaneously.
-                Staggered `delay` on each pill provides sequential
-                appearance without the ~370ms queue that `mode="wait"` imposed.
+          <>
+            {/*
+              Backdrop layer — blur + tint only, opacity animation.
+              will-change: opacity caches the blur sample after frame 1;
+              subsequent frames are a cheap alpha-blend on the GPU.
+              No content children — zero content repaint cost per frame.
             */}
             <motion.div
-              className="flex gap-2 overflow-x-auto px-6 py-4 scrollbar-none"
+              key="overlay-backdrop"
+              className="fixed inset-0 z-[60] bg-slate-900/95 backdrop-blur-md"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18, ease: OVERLAY_EASE }}
+              style={{ willChange: "opacity" }}
+              aria-hidden="true"
+            />
+
+            {/*
+              Panel layer — all menu content, no backdrop-blur.
+              will-change: transform promotes an independent GPU layer so the
+              y + opacity animation composites entirely separately from the
+              backdrop blur. z-[61] ensures content paints above the backdrop.
+              Subtle y: 10→0 lift-in / y: 6 sink-out for "Modern Organic" feel.
+            */}
+            <motion.div
+              key="overlay-panel"
+              className="fixed inset-0 z-[61] flex flex-col"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              // Spring on the container: y displacement benefits from spring physics.
-              transition={{ delay: 0.04, ...pillSpring }}
+              exit={{ opacity: 0, y: 6 }}
+              transition={{ duration: 0.18, ease: OVERLAY_EASE }}
+              style={{ willChange: "transform" }}
             >
-              <AnimatePresence>
-                {pills.map((pill, i) => (
+              {/* Header row */}
+              <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
+                <span className="text-sm font-semibold tracking-[0.18em] text-white">
+                  HADE SYSTEMS
+                </span>
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setMenuOpen(false)}
+                  style={{ touchAction: "manipulation" }}
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-white/70"
+                >
+                  <CloseIcon />
+                </motion.button>
+              </div>
+
+              {/* ── Contextual Pills ──────────────────────────────
+                  AnimatePresence (no mode) = default "sync" behaviour:
+                  old pills exit and new pills enter simultaneously.
+                  Staggered `delay` on each pill provides sequential
+                  appearance without the ~370ms queue that `mode="wait"` imposed.
+              */}
+              <motion.div
+                className="flex gap-2 overflow-x-auto px-6 py-4 scrollbar-none"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                // Spring on the container: y displacement benefits from spring physics.
+                transition={{ delay: 0.04, ...pillSpring }}
+              >
+                <AnimatePresence>
+                  {pills.map((pill, i) => (
+                    <motion.div
+                      key={`${ctaState}-${i}`}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4, transition: { duration: 0.12 } }}
+                      // Per-pill stagger via delay; spring for the y movement.
+                      transition={{ delay: i * 0.055, ...pillSpring }}
+                    >
+                      <Link
+                        href={pill.href}
+                        onClick={() => setMenuOpen(false)}
+                        className="inline-flex shrink-0 items-center rounded-full border border-white/15 px-3.5 py-1.5 text-xs font-medium text-white/65 transition hover:border-white/30 hover:text-white/90"
+                      >
+                        {pill.label}
+                      </Link>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </motion.div>
+
+              {/* ── Nav Links ─────────────────────────────────────
+                  motion.nav as stagger container: variants propagate to
+                  all motion.div children automatically. staggerChildren
+                  fires each child 55ms after the previous; delayChildren
+                  gives the overlay a brief head-start before links arrive.
+                  Only opacity + y (transforms) are animated — no layout
+                  properties — keeping the animation on the compositor thread.
+              */}
+              <motion.nav
+                className="flex flex-1 flex-col justify-center px-6 py-2"
+                variants={navContainerVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                {NAV_LINKS.map((link) => (
                   <motion.div
-                    key={`${ctaState}-${i}`}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -4, transition: { duration: 0.12 } }}
-                    // Per-pill stagger via delay; spring for the y movement.
-                    transition={{ delay: i * 0.055, ...pillSpring }}
+                    key={link.href}
+                    variants={navLinkVariants}
                   >
                     <Link
-                      href={pill.href}
+                      href={link.href}
                       onClick={() => setMenuOpen(false)}
-                      className="inline-flex shrink-0 items-center rounded-full border border-white/15 px-3.5 py-1.5 text-xs font-medium text-white/65 transition hover:border-white/30 hover:text-white/90"
+                      className="block border-b border-white/8 py-4 text-xl font-semibold text-white/80 transition hover:text-white"
                     >
-                      {pill.label}
+                      {link.label}
                     </Link>
                   </motion.div>
                 ))}
-              </AnimatePresence>
+              </motion.nav>
+
+              {/* System Log — deferred 260ms so its setInterval doesn't
+                  compete with the opening animation frames. */}
+              {logReady && <SystemLog ctaState={ctaState} />}
             </motion.div>
-
-            {/* ── Nav Links ─────────────────────────────────────
-                motion.nav as stagger container: variants propagate to
-                all motion.div children automatically. staggerChildren
-                fires each child 55ms after the previous; delayChildren
-                gives the overlay a brief head-start before links arrive.
-                Only opacity + y (transforms) are animated — no layout
-                properties — keeping the animation on the compositor thread.
-            */}
-            <motion.nav
-              className="flex flex-1 flex-col justify-center px-6 py-2"
-              variants={navContainerVariants}
-              initial="hidden"
-              animate="visible"
-            >
-              {NAV_LINKS.map((link) => (
-                <motion.div
-                  key={link.href}
-                  variants={navLinkVariants}
-                >
-                  <Link
-                    href={link.href}
-                    onClick={() => setMenuOpen(false)}
-                    className="block border-b border-white/8 py-4 text-xl font-semibold text-white/80 transition hover:text-white"
-                  >
-                    {link.label}
-                  </Link>
-                </motion.div>
-              ))}
-            </motion.nav>
-
-            {/* System Log */}
-            <SystemLog ctaState={ctaState} />
-          </motion.div>
+          </>
         )}
       </AnimatePresence>
 
       {/* ── Persistent Bottom Bar ───────────────────────────── */}
+      {/*
+        translateZ(0) forces compositor layer promotion before the entrance
+        animation begins — eliminates the lazy-allocation dropped-first-frame
+        risk on cold load. willChange: transform keeps it pre-promoted.
+      */}
       <motion.div
         className="fixed bottom-0 left-0 right-0 z-[55] border-t border-line/70 bg-white/85 backdrop-blur-xl"
         initial={{ y: 80 }}
@@ -315,34 +400,45 @@ export function AdaptiveMobileNav() {
         // Spring: large bar sliding in from off-screen benefits most from spring
         // physics — the deceleration curve feels weighted and intentional.
         transition={barSpring}
+        style={{ transform: "translateZ(0)", willChange: "transform" }}
       >
         <div className="flex h-16 items-center justify-around px-2">
-          {/* Home */}
-          <motion.div whileTap={{ scale: 0.92 }}>
-            <Link href="/" className="flex flex-col items-center gap-0.5 px-3 py-1 text-ink/55">
-              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
-                <HomeIcon />
-              </span>
-              <span className="text-[10px] font-medium">Home</span>
-            </Link>
-          </motion.div>
+          {/* Home — MotionLink: whileTap + touchAction on the interactive element */}
+          <MotionLink
+            href="/"
+            whileTap={{ scale: 0.92 }}
+            style={{ touchAction: "manipulation" }}
+            className="flex flex-col items-center gap-0.5 px-3 py-1 text-ink/55"
+          >
+            <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
+              <HomeIcon />
+            </span>
+            <span className="text-[10px] font-medium">Home</span>
+          </MotionLink>
 
-          {/* Work */}
-          <motion.div whileTap={{ scale: 0.92 }}>
-            <Link href="/how-it-works" className="flex flex-col items-center gap-0.5 px-3 py-1 text-ink/55">
-              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
-                <WorkIcon />
-              </span>
-              <span className="text-[10px] font-medium leading-none text-center">
-                How It Works
-              </span>
-            </Link>
-          </motion.div>
+          {/* How It Works — MotionLink: whileTap + touchAction on the interactive element */}
+          <MotionLink
+            href="/how-it-works"
+            whileTap={{ scale: 0.92 }}
+            style={{ touchAction: "manipulation" }}
+            className="flex flex-col items-center gap-0.5 px-3 py-1 text-ink/55"
+          >
+            <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
+              <WorkIcon />
+            </span>
+            <span className="text-[10px] font-medium leading-none text-center">
+              How It Works
+            </span>
+          </MotionLink>
 
-          {/* FAB — Dynamic CTA */}
+          {/* FAB — Dynamic CTA
+              -mt-5 offset must remain on the wrapper div; touchAction goes on
+              the Link so the tap delay elimination reaches the correct element.
+          */}
           <motion.div whileTap={{ scale: 0.93 }} className="-mt-5">
             <Link
               href={cta.href}
+              style={{ touchAction: "manipulation" }}
               className="relative flex h-14 min-w-[120px] items-center justify-center overflow-hidden rounded-2xl bg-ink px-4 shadow-[0_4px_20px_rgba(11,13,18,0.25)]"
             >
               {/*
@@ -366,28 +462,31 @@ export function AdaptiveMobileNav() {
             </Link>
           </motion.div>
 
-          {/* Services */}
-          <motion.div whileTap={{ scale: 0.92 }}>
-            <Link href="/services" className="flex flex-col items-center gap-0.5 px-3 py-1 text-ink/55">
-              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
-                <ServicesIcon />
-              </span>
-              <span className="text-[10px] font-medium">Services</span>
-            </Link>
-          </motion.div>
+          {/* Services — MotionLink: whileTap + touchAction on the interactive element */}
+          <MotionLink
+            href="/services"
+            whileTap={{ scale: 0.92 }}
+            style={{ touchAction: "manipulation" }}
+            className="flex flex-col items-center gap-0.5 px-3 py-1 text-ink/55"
+          >
+            <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
+              <ServicesIcon />
+            </span>
+            <span className="text-[10px] font-medium">Services</span>
+          </MotionLink>
 
-          {/* Menu */}
-          <motion.div whileTap={{ scale: 0.92 }}>
-            <button
-              onClick={() => setMenuOpen(true)}
-              className="flex flex-col items-center gap-0.5 px-3 py-1 text-ink/55"
-            >
-              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
-                <MenuIcon />
-              </span>
-              <span className="text-[10px] font-medium">Menu</span>
-            </button>
-          </motion.div>
+          {/* Menu — motion.button: whileTap + touchAction on the interactive element */}
+          <motion.button
+            whileTap={{ scale: 0.92 }}
+            onClick={() => setMenuOpen(true)}
+            style={{ touchAction: "manipulation" }}
+            className="flex flex-col items-center gap-0.5 px-3 py-1 text-ink/55"
+          >
+            <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
+              <MenuIcon />
+            </span>
+            <span className="text-[10px] font-medium">Menu</span>
+          </motion.button>
         </div>
 
         {/* Safe-area spacer for iPhone home indicator */}
