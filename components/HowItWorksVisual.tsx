@@ -18,6 +18,7 @@ import {
   Check,
 } from "lucide-react";
 import { processSteps } from "@/lib/site-data";
+import { HADESystemsDiagram } from "./HADEDiagram";
 
 /* ─── THEME ──────────────────────────────────────────────────────── */
 const THEME = {
@@ -502,217 +503,6 @@ function deriveState(step: number) {
   return { activeNode, activeConn, doneNodes };
 }
 
-const SystemArchitecture = () => {
-  const [scenarioIdx, setScenarioIdx] = useState(0);
-  const [step, setStep] = useState(-1);
-  const [isRunning, setIsRunning] = useState(false);
-  const [runCount, setRunCount] = useState(0);
-
-  const scenario = SCENARIOS[scenarioIdx];
-  const { activeNode, activeConn, doneNodes } = deriveState(step);
-  const isComplete = step === 7;
-
-  // Staged delays (ms) — nodes dwell long enough to read the callout,
-  // connectors are brief transitions. L2 (HADE Core) dwells longest
-  // as it's doing the routing decision work.
-  //
-  // step: 0     1     2     3     4     5     6     7
-  //       L1  conn   L2  conn   L3  conn   L4  done
-  const STEP_DELAYS = [0, 1800, 2400, 4900, 5500, 7300, 7900, 9900];
-
-  const runSignal = () => {
-    if (isRunning) return;
-    setIsRunning(true);
-    setRunCount((c) => c + 1);
-
-    STEP_DELAYS.forEach((delay, i) => {
-      setTimeout(() => {
-        setStep(i);
-        if (i === 7) {
-          setTimeout(() => {
-            setStep(-1);
-            setIsRunning(false);
-          }, 2200);
-        }
-      }, delay);
-    });
-  };
-
-  return (
-    <div
-      className="rounded-2xl px-6 py-10 md:px-10"
-      style={{ background: THEME.colors.dark, border: `1px solid ${THEME.colors.border}` }}
-    >
-      {/* Header */}
-      <div className="flex flex-col gap-5 mb-8 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p
-            className="text-[10px] uppercase tracking-[0.28em] text-teal-500 mb-1"
-            style={{ fontFamily: THEME.fonts.mono }}
-          >
-            System Simulator
-          </p>
-          <h3 className="text-lg font-semibold tracking-tight text-white">
-            How HADE processes context in real time
-          </h3>
-        </div>
-
-        {/* Controls */}
-        <div className="flex flex-col gap-3 items-start md:items-end shrink-0 w-full md:w-auto">
-          {/* Scenario chips */}
-          <div className="flex flex-wrap gap-2 w-full md:w-auto">
-            {SCENARIOS.map((s, i) => (
-              <button
-                key={s.label}
-                onClick={() => { if (!isRunning) setScenarioIdx(i); }}
-                disabled={isRunning}
-                className="rounded-full border px-3 py-2 md:py-1 text-[10px] font-medium transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed min-h-[36px] md:min-h-0"
-                style={{
-                  fontFamily: THEME.fonts.mono,
-                  background: scenarioIdx === i ? "rgba(44,123,118,0.15)" : "transparent",
-                  borderColor: scenarioIdx === i ? "rgba(44,123,118,0.6)" : "rgba(255,255,255,0.12)",
-                  color: scenarioIdx === i ? "#5eead4" : "rgba(148,163,184,0.8)",
-                }}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Run Signal button */}
-          <button
-            onClick={runSignal}
-            disabled={isRunning}
-            className="flex items-center justify-center gap-2 w-full md:w-auto rounded-full border px-4 py-2.5 md:py-1.5 text-[11px] font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] md:min-h-0"
-            style={{
-              fontFamily: THEME.fonts.mono,
-              background: isRunning ? "rgba(44,123,118,0.08)" : "rgba(44,123,118,0.12)",
-              borderColor: "rgba(44,123,118,0.45)",
-              color: "#5eead4",
-              boxShadow: isRunning ? "none" : "0 0 14px rgba(44,123,118,0.15)",
-            }}
-          >
-            {isRunning ? (
-              <>
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                >
-                  <RefreshCw className="w-3 h-3" />
-                </motion.div>
-                Processing…
-              </>
-            ) : (
-              <>
-                <Play className="w-3 h-3 fill-teal-400" />
-                Run Signal
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Desktop: horizontal flow */}
-      <div className="hidden md:flex items-center gap-2">
-        <ArchNode
-          level="L1" title="Signal Sensing" subtitle="Live behavior & intent telemetry"
-          icon={<Activity className="w-4 h-4" />} delay={0.1}
-          isActive={activeNode === 0} isDone={doneNodes.has(0)}
-          callout={scenario.nodes[0].callout} calloutColor={scenario.nodes[0].color}
-          runCount={runCount}
-        />
-        <HConnector delay={0.3} color="teal" isBurst={activeConn === 0} burstKey={runCount} />
-        <ArchNode
-          level="L2 · HADE Core" title="Adaptive Engine" subtitle="Context-aware decision system"
-          icon={<Layers className="w-4 h-4" />} delay={0.4} focal
-          isActive={activeNode === 1} isDone={doneNodes.has(1)}
-          callout={scenario.nodes[1].callout} calloutColor={scenario.nodes[1].color}
-          runCount={runCount}
-        />
-        <HConnector delay={0.7} color="indigo" isBurst={activeConn === 1} burstKey={runCount} />
-        <ArchNode
-          level="L3" title="Experience Delivery" subtitle="Personalized UI rendered in context"
-          icon={<Zap className="w-4 h-4 text-indigo-400" />} delay={0.8}
-          isActive={activeNode === 2} isDone={doneNodes.has(2)}
-          callout={scenario.nodes[2].callout} calloutColor={scenario.nodes[2].color}
-          runCount={runCount}
-        />
-        <HConnector delay={1.1} color="amber" isBurst={activeConn === 2} burstKey={runCount} />
-        <ArchNode
-          level="L4" title="Experiment Loop" subtitle="Feedback adapts system reasoning"
-          icon={
-            <motion.div animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: "linear" }}>
-              <RefreshCw className="w-4 h-4 text-amber-500" />
-            </motion.div>
-          }
-          delay={1.2}
-          isActive={activeNode === 3} isDone={doneNodes.has(3)}
-          callout={scenario.nodes[3].callout} calloutColor={scenario.nodes[3].color}
-          runCount={runCount}
-        />
-      </div>
-
-      {/* Mobile: step progress bar + 2×2 grid — all 4 nodes visible in viewport */}
-      <div className="md:hidden">
-        <StepProgressBar activeNode={activeNode} doneNodes={doneNodes} runCount={runCount} />
-        <div className="grid grid-cols-2 gap-2.5">
-          <MobileArchNode
-            nodeIndex={0} level="L1" title="Signal Sensing"
-            icon={<Activity className="w-3.5 h-3.5" />}
-            isActive={activeNode === 0} isDone={doneNodes.has(0)}
-            callout={scenario.nodes[0].callout} calloutColor={scenario.nodes[0].color}
-            runCount={runCount}
-          />
-          <MobileArchNode
-            nodeIndex={1} level="L2 · Core" title="Adaptive Engine"
-            icon={<Layers className="w-3.5 h-3.5" />} focal
-            isActive={activeNode === 1} isDone={doneNodes.has(1)}
-            callout={scenario.nodes[1].callout} calloutColor={scenario.nodes[1].color}
-            runCount={runCount}
-          />
-          <MobileArchNode
-            nodeIndex={2} level="L3" title="Experience Delivery"
-            icon={<Zap className="w-3.5 h-3.5 text-indigo-400" />}
-            isActive={activeNode === 2} isDone={doneNodes.has(2)}
-            callout={scenario.nodes[2].callout} calloutColor={scenario.nodes[2].color}
-            runCount={runCount}
-          />
-          <MobileArchNode
-            nodeIndex={3} level="L4" title="Experiment Loop"
-            icon={
-              <motion.div animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: "linear" }}>
-                <RefreshCw className="w-3.5 h-3.5 text-amber-500" />
-              </motion.div>
-            }
-            isActive={activeNode === 3} isDone={doneNodes.has(3)}
-            callout={scenario.nodes[3].callout} calloutColor={scenario.nodes[3].color}
-            runCount={runCount}
-          />
-        </div>
-      </div>
-
-      {/* Completion status */}
-      <AnimatePresence>
-        {isComplete && (
-          <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.3 }}
-            className="mt-6 flex items-center gap-2.5 rounded-xl border border-teal-500/20 bg-teal-500/8 px-4 py-2.5"
-          >
-            <div className="w-4 h-4 rounded-full bg-teal-500/25 border border-teal-500/50 flex items-center justify-center shrink-0">
-              <Check className="w-2.5 h-2.5 text-teal-400" />
-            </div>
-            <p className="text-[10px] text-teal-400 tracking-wide" style={{ fontFamily: THEME.fonts.mono }}>
-              Signal processed — adaptive route selected and experiment loop updated
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
 
 /* ─── STREAMLINED: HADE ENGINE ARCHITECTURE (THE BLUEPRINT OVERLAY) ─── */
 const HADEEngineArchitecture = () => {
@@ -973,8 +763,8 @@ export function HowItWorksVisual() {
    {/* Streamlined Master Architecture Component */}
    <HADEEngineArchitecture />
 
-      <section>
-        <SystemArchitecture />
+   <section>
+        <HADESystemsDiagram />
       </section>
 
       <section>

@@ -255,11 +255,13 @@ export function AdaptiveMobileNav() {
 
           {/* Work */}
           <motion.div whileTap={{ scale: 0.92 }}>
-            <Link href="/how-it-works" className="flex flex-col items-center gap-0.5 px-3 py-1 text-ink/55">
-              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
+          <Link href="/services" className="flex flex-col items-center gap-0.5 px-3 py-1 text-ink/55">
+          <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
                 <WorkIcon />
               </span>
-              <span className="text-[10px] font-medium">How It Works</span>
+              <span className="text-[10px] font-medium leading-none text-center">
+              How It Works
+            </span>
             </Link>
           </motion.div>
 
