@@ -209,10 +209,13 @@ export function AdaptiveMobileNav() {
           </MotionLink>
 
           <div className="-mt-5 flex flex-col items-center">
-            <Link href={cta.href} className="bg-black text-white px-4 py-2 rounded-xl text-[11px] font-semibold text-center leading-tight shadow">
-              {cta.label}
-            </Link>
-          </div>
+          <Link 
+            href={cta.href} 
+            className="bg-black text-white px-6 h-14 flex items-center justify-center rounded-2xl text-[12px] font-semibold text-center leading-tight shadow-lg"
+          >
+            {cta.label}
+          </Link>
+        </div>
 
           <MotionLink href="/services" className="flex flex-col items-center justify-center text-[10px] text-ink/70">
             <ServicesIcon />
