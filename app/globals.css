@@ -87,6 +87,14 @@ body {
   will-change: transform, opacity;
 }
 
+/* ─── Menu open: freeze background hit-testing ────────────────────────────── */
+/* Toggled by lockScroll() / unlockScroll() in AdaptiveMobileNav.               */
+/* Prevents the browser from processing hover/touch events on page content      */
+/* while the menu overlay is transitioning — zero wasted main-thread work.      */
+body.menu-is-open main {
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   html.reveal-enabled body.js-enabled .reveal,
   html.reveal-enabled body.js-enabled .load-into-view,
