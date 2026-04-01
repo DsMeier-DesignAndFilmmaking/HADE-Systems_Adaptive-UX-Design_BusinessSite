@@ -60,6 +60,58 @@ const NAV_LINKS = [
   { href: "/contact", label: "Contact" },
 ];
 
+// ─── Motion Config ────────────────────────────────────────────────────────────
+
+/**
+ * Overlay fade easing — matches globals.css `.reveal-in` cubic-bezier for
+ * consistency with the site-wide scroll-reveal system.
+ * Pure opacity transitions don't benefit from spring physics (no spatial
+ * overshoot), so we use a tuned duration + curve instead.
+ */
+const OVERLAY_EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
+
+/**
+ * Spring presets — "Modern Organic" aesthetic.
+ *
+ * Formula reference: f(t) = e^(-ζωₙt) · cos(ωd·t + φ)
+ * All configs are slightly underdamped (damping ratio < 1) for a snappy,
+ * physically-plausible deceleration with no visible oscillation.
+ *
+ * - fabSpring:  Snappiest — micro UI element, near-instant text swap.
+ * - pillSpring: Crisp — small pill components, quick contextual swap.
+ * - linkSpring: Editorial — each nav link arrives with a distinct, weighted feel.
+ * - barSpring:  Heaviest — large bar arriving from off-screen needs extra weight.
+ */
+const fabSpring  = { type: "spring" as const, stiffness: 420, damping: 36 };
+const pillSpring = { type: "spring" as const, stiffness: 300, damping: 28 };
+const linkSpring = { type: "spring" as const, stiffness: 260, damping: 26 };
+const barSpring  = { type: "spring" as const, stiffness: 240, damping: 26 };
+
+/**
+ * Nav stagger container — drives coordinated entrance of all nav links.
+ * `staggerChildren` fires each child's variant 55ms after the previous,
+ * `delayChildren` gives the overlay opacity fade an 80ms head-start.
+ *
+ * Exit: the parent overlay's opacity handles the close; no staggered exit
+ * is needed (and avoids extending the close animation unnecessarily).
+ */
+const navContainerVariants = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.055, delayChildren: 0.08 },
+  },
+} as const;
+
+/**
+ * Individual nav link — spring entrance only.
+ * y: 12 → 0 keeps the motion on the compositor thread (transform, not layout).
+ * No `exit` key — the parent overlay's `exit={{ opacity: 0 }}` handles closing.
+ */
+const navLinkVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: linkSpring },
+} as const;
+
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
 function HomeIcon() {
@@ -157,6 +209,7 @@ export function AdaptiveMobileNav() {
 
   return (
     <div className="md:hidden">
+
       {/* ── Full-Screen Overlay ─────────────────────────────── */}
       <AnimatePresence>
         {menuOpen && (
@@ -165,7 +218,9 @@ export function AdaptiveMobileNav() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            // Duration-based fade: pure opacity gains nothing from spring physics.
+            // Curve matches site-wide .reveal-in easing for perceptual consistency.
+            transition={{ duration: 0.18, ease: OVERLAY_EASE }}
           >
             {/* Header row */}
             <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
@@ -181,21 +236,28 @@ export function AdaptiveMobileNav() {
               </motion.button>
             </div>
 
-            {/* Contextual Pills */}
+            {/* ── Contextual Pills ──────────────────────────────
+                AnimatePresence (no mode) = default "sync" behaviour:
+                old pills exit and new pills enter simultaneously.
+                Staggered `delay` on each pill provides sequential
+                appearance without the ~370ms queue that `mode="wait"` imposed.
+            */}
             <motion.div
               className="flex gap-2 overflow-x-auto px-6 py-4 scrollbar-none"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05, duration: 0.3 }}
+              // Spring on the container: y displacement benefits from spring physics.
+              transition={{ delay: 0.04, ...pillSpring }}
             >
-              <AnimatePresence mode="wait">
+              <AnimatePresence>
                 {pills.map((pill, i) => (
                   <motion.div
                     key={`${ctaState}-${i}`}
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -4 }}
-                    transition={{ delay: i * 0.06, duration: 0.25 }}
+                    exit={{ opacity: 0, y: -4, transition: { duration: 0.12 } }}
+                    // Per-pill stagger via delay; spring for the y movement.
+                    transition={{ delay: i * 0.055, ...pillSpring }}
                   >
                     <Link
                       href={pill.href}
@@ -209,14 +271,24 @@ export function AdaptiveMobileNav() {
               </AnimatePresence>
             </motion.div>
 
-            {/* Nav Links */}
-            <nav className="flex flex-1 flex-col justify-center px-6 py-2">
-              {NAV_LINKS.map((link, i) => (
+            {/* ── Nav Links ─────────────────────────────────────
+                motion.nav as stagger container: variants propagate to
+                all motion.div children automatically. staggerChildren
+                fires each child 55ms after the previous; delayChildren
+                gives the overlay a brief head-start before links arrive.
+                Only opacity + y (transforms) are animated — no layout
+                properties — keeping the animation on the compositor thread.
+            */}
+            <motion.nav
+              className="flex flex-1 flex-col justify-center px-6 py-2"
+              variants={navContainerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              {NAV_LINKS.map((link) => (
                 <motion.div
                   key={link.href}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 + i * 0.04, duration: 0.28, ease: "easeOut" }}
+                  variants={navLinkVariants}
                 >
                   <Link
                     href={link.href}
@@ -227,7 +299,7 @@ export function AdaptiveMobileNav() {
                   </Link>
                 </motion.div>
               ))}
-            </nav>
+            </motion.nav>
 
             {/* System Log */}
             <SystemLog ctaState={ctaState} />
@@ -240,7 +312,9 @@ export function AdaptiveMobileNav() {
         className="fixed bottom-0 left-0 right-0 z-[55] border-t border-line/70 bg-white/85 backdrop-blur-xl"
         initial={{ y: 80 }}
         animate={{ y: 0 }}
-        transition={{ duration: 0.4, ease: "easeOut" }}
+        // Spring: large bar sliding in from off-screen benefits most from spring
+        // physics — the deceleration curve feels weighted and intentional.
+        transition={barSpring}
       >
         <div className="flex h-16 items-center justify-around px-2">
           {/* Home */}
@@ -255,13 +329,13 @@ export function AdaptiveMobileNav() {
 
           {/* Work */}
           <motion.div whileTap={{ scale: 0.92 }}>
-          <Link href="/services" className="flex flex-col items-center gap-0.5 px-3 py-1 text-ink/55">
-          <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
+            <Link href="/how-it-works" className="flex flex-col items-center gap-0.5 px-3 py-1 text-ink/55">
+              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
                 <WorkIcon />
               </span>
               <span className="text-[10px] font-medium leading-none text-center">
-              How It Works
-            </span>
+                How It Works
+              </span>
             </Link>
           </motion.div>
 
@@ -271,13 +345,19 @@ export function AdaptiveMobileNav() {
               href={cta.href}
               className="relative flex h-14 min-w-[120px] items-center justify-center overflow-hidden rounded-2xl bg-ink px-4 shadow-[0_4px_20px_rgba(11,13,18,0.25)]"
             >
+              {/*
+                mode="wait" is CORRECT here: single child (text span) swaps
+                between states. Single-child wait mode is the intended pattern
+                and produces no console warning.
+              */}
               <AnimatePresence mode="wait">
                 <motion.span
                   key={cta.label}
                   initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 6 }}
-                  transition={{ duration: 0.18 }}
+                  // Snappiest spring for micro-interaction text swap.
+                  transition={fabSpring}
                   className="text-center text-[11px] font-semibold leading-tight text-white"
                 >
                   {cta.label}
