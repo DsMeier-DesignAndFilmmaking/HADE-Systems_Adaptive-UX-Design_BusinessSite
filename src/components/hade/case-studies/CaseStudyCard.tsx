@@ -33,7 +33,7 @@ export default function CaseStudyCard({
           {title}
         </h3>
 
-        <p className="text-sm text-muted mb-4 max-w-md">
+        <p className="text-md text-muted mb-4 max-w-md">
           {description}
         </p>
 

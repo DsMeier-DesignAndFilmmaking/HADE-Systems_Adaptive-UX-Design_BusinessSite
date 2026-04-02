@@ -1,13 +1,36 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { MapPin } from "lucide-react";
+import { MapPin, Plus, Camera, FileText, Mic2, X, Sparkles, Mic } from "lucide-react";
 import { GoogleMap, OverlayView, useJsApiLoader } from "@react-google-maps/api";
 
 
+/* --- Modern Organic Palette (Vibe Creator) --- */
+const ORGANIC = {
+  cream:       "#F5F2ED",
+  charcoalSoft:"#F0EDE8",
+  charcoal:    "#2C2C2C",
+  sage:        "#7D8B72",
+  sageFaint:   "rgba(125,139,114,0.10)",
+  sageMid:     "rgba(125,139,114,0.22)",
+  warmLine:    "#E8E4DC",
+  warmWhite:   "#FEFCF8",
+} as const;
+
 /* --- 1. Enhanced HADE Types & Theme --- */
 type StepId = "input" | "processing" | "result" | "mapping";
+
+/* Vibe Creator isolated state machine — never shares state with StepId */
+type VibeMode = "idle" | "sense" | "documenting" | "confirmed";
+
+interface StoredVibe {
+  id: string;
+  raw: string;
+  chips: string[];
+  timestamp: number;
+}
 type LlmChoice = "gemini" | "llama" | "claude";
 
 type ModuleContext = "weather-vibe" | "expert-network" | "mood-journey" | "meet-someone" | "the-wildcard";
@@ -58,6 +81,50 @@ interface HadeApiResponse {
   urgency?: "high" | "medium" | "low";
   novelty?: number;
 }
+
+/* --- UGC Field Notes --- */
+
+interface UGCPreset {
+  id: "photo" | "text" | "voice";
+  label: string;
+  sublabel: string;
+  description: string;
+  injectedSignal: string;
+  extractedTags: string[];
+}
+
+const UGC_PRESETS: UGCPreset[] = [
+  {
+    id: "photo",
+    label: "Photo",
+    sublabel: "Architectural Detail",
+    description: "A brutalist concrete facade captured off İstiklal — raw texture, diffused light.",
+    injectedSignal: "brutalist architecture concrete hidden interior space",
+    extractedTags: ["Vibe: Structural", "Type: Interior", "Texture: Raw Concrete", "Mood: Contemplative"],
+  },
+  {
+    id: "text",
+    label: "Text",
+    sublabel: "Field Note",
+    description: "Hidden high-fidelity listening bar nearby",
+    injectedSignal: "high-fidelity listening bar acoustic hidden local",
+    extractedTags: ["Vibe: Acoustic", "Type: Bar", "Ambience: Intimate", "Volume: Curated"],
+  },
+  {
+    id: "voice",
+    label: "Voice",
+    sublabel: "Context Probe",
+    description: "Searching for a quiet café-bar vibe",
+    injectedSignal: "quiet cafe-bar calm low-key ambient local",
+    extractedTags: ["Vibe: Calm", "Type: Café-Bar", "Energy: Low", "Context: Work-Adjacent"],
+  },
+];
+
+const UGC_ICONS: Record<UGCPreset["id"], React.ReactNode> = {
+  photo: <Camera size={15} />,
+  text: <FileText size={15} />,
+  voice: <Mic2 size={15} />,
+};
 
 const MODULE_THEMES: Record<ModuleContext, { 
   primary: string; 
@@ -177,6 +244,27 @@ const LLM_OPTIONS: Array<{ id: LlmChoice; label: string; detail: string }> = [
   { id: "claude", label: "Claude", detail: "Spatial Architect"    },
 ];
 
+/* --- Vibe Creator Utilities --- */
+
+const VIBE_CHIPS_DEFAULT = ["City Park", "High Energy", "Live Event", "Outdoor"] as const;
+
+const SAMPLE_VIBE_TEXT = "Volleyball game happening at City Park, high energy.";
+
+/**
+ * surfaceUGCContext
+ * Pure function. Returns the most recent StoredVibe when the search text
+ * contains "active" or "park". No side effects.
+ */
+function surfaceUGCContext(
+  currentSearch: string,
+  storedVibes: StoredVibe[]
+): StoredVibe | null {
+  if (!storedVibes.length || !currentSearch.trim()) return null;
+  const lower = currentSearch.toLowerCase();
+  if (!lower.includes("active") && !lower.includes("park")) return null;
+  return [...storedVibes].sort((a, b) => b.timestamp - a.timestamp)[0];
+}
+
 /* --- 3. UI Sub-Components --- */
 
 function EngineSettings({ signal, setSignal }: any) {
@@ -227,19 +315,70 @@ function EngineSettings({ signal, setSignal }: any) {
   );
 }
 
-function UnifiedInputStep({ signal, setSignal, onNext, isLoading }: any) {
+function UnifiedInputStep({ signal, setSignal, onNext, isLoading, onCaptureContext, onCreateVibe, surfacedVibe }: any) {
   const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
   const hasSignalInput = signal.combinedSignal.trim().length > 0;
   return (
     <div className="relative flex min-h-[600px] flex-col overflow-hidden rounded-[2.5rem] border border-white/40 bg-white/70 p-8 backdrop-blur-2xl shadow-xl md:p-12">
       <div className="flex-1">
-        <div className="flex items-center gap-2">
-          <div className="h-2 w-2 rounded-full animate-pulse" style={{ background: theme.primary }} />
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">HADE Live</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full animate-pulse" style={{ background: theme.primary }} />
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">HADE Live</span>
+          </div>
+          {/* Create a Vibe — header affordance */}
+          <button
+            onClick={onCreateVibe}
+            className="flex items-center gap-2 rounded-full px-4 py-2 transition-all hover:scale-[1.03]"
+            style={{ background: ORGANIC.cream, border: `1px solid ${ORGANIC.warmLine}` }}
+          >
+            <Sparkles size={12} style={{ color: ORGANIC.sage }} />
+            <span className="text-[10px] font-black uppercase tracking-[0.16em]" style={{ color: ORGANIC.sage }}>
+              Create a Vibe
+            </span>
+          </button>
         </div>
-        <h3 className="mt-4 text-4xl font-bold tracking-tight text-ink">What’s the vibe?</h3>
-        <p className="mt-2 text-sm text-ink/50 max-w-2xl">HADE checks the local pulse and how you’re feeling to suggest the perfect next move.</p>
-        
+        <h3 className="mt-4 text-4xl font-bold tracking-tight text-ink">What's the vibe?</h3>
+        <p className="mt-2 text-sm text-ink/50 max-w-2xl">HADE checks the local pulse and how you're feeling to suggest the perfect next move.</p>
+
+        {/* Surfaced Field Note — appears when search matches a stored vibe */}
+        <AnimatePresence>
+          {surfacedVibe && (
+            <motion.div
+              key="surface-hint"
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.4 }}
+              className="mt-5 flex items-start gap-3 rounded-2xl px-5 py-4"
+              style={{ background: ORGANIC.cream, border: `1px solid ${ORGANIC.warmLine}` }}
+            >
+              <motion.div
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ repeat: Infinity, duration: 2 }}
+                className="mt-0.5 h-1.5 w-1.5 flex-shrink-0 rounded-full"
+                style={{ background: ORGANIC.sage }}
+              />
+              <div className="min-w-0">
+                <p className="text-[9px] font-black uppercase tracking-[0.22em]" style={{ color: ORGANIC.sage }}>
+                  Field Note Active
+                </p>
+                <p className="mt-0.5 truncate text-sm" style={{ color: ORGANIC.charcoal, fontFamily: 'Georgia, "Times New Roman", serif', fontStyle: "italic" }}>
+                  "{surfacedVibe.raw}"
+                </p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {surfacedVibe.chips.map((chip: string) => (
+                    <span key={chip} className="rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.14em]"
+                      style={{ background: ORGANIC.warmWhite, border: `1px solid ${ORGANIC.warmLine}`, color: ORGANIC.sage }}>
+                      {chip}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <textarea
           value={signal.combinedSignal}
           onChange={(e) => setSignal((p: any) => ({ ...p, combinedSignal: e.target.value }))}
@@ -277,7 +416,19 @@ function UnifiedInputStep({ signal, setSignal, onNext, isLoading }: any) {
 
         <EngineSettings signal={signal} setSignal={setSignal} />
       </div>
-      <div className="mt-8 flex justify-end">
+      <div className="mt-8 flex items-center justify-between gap-4">
+        {/* Left affordances */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onCaptureContext}
+            className="flex items-center gap-2 rounded-full border border-ink/10 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-sm transition-all hover:scale-[1.02] hover:border-ink/20"
+          >
+            <Plus size={13} className="text-ink/40" />
+            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-ink/40">Field Notes</span>
+          </button>
+        </div>
+
+        {/* Primary action — right side */}
         <button
           onClick={onNext}
           disabled={isLoading || !hasSignalInput}
@@ -325,7 +476,7 @@ const ProcessingStep = React.memo(function ProcessingStep({ signal, onComplete, 
   );
 });
 
-function ResultStep({ signal, generatedOutput, onRestart, onGo }: any) {
+function ResultStep({ signal, generatedOutput, onRestart, onGo, resultPulse, ugcInjected, surfacedVibe }: any) {
   const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
   const displayKeyword =
     generatedOutput?.keyword || generatedOutput?.primary?.keyword || "HADE Node";
@@ -335,6 +486,65 @@ function ResultStep({ signal, generatedOutput, onRestart, onGo }: any) {
     "Processing Istanbul signal...";
 
   return (
+    <div>
+      {/* Field Note card — surfaces when vibe matches search context */}
+      <AnimatePresence>
+        {surfacedVibe && (
+          <motion.div
+            key="field-note-card"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.45, ease: [0.19, 1, 0.22, 1] }}
+            className="mb-5 overflow-hidden rounded-[1.75rem]"
+            style={{ background: ORGANIC.warmWhite, border: `1px solid ${ORGANIC.warmLine}`, boxShadow: `0 4px 20px ${ORGANIC.sageFaint}` }}
+          >
+            <div className="flex items-center gap-3 px-5 py-3" style={{ background: ORGANIC.cream, borderBottom: `1px solid ${ORGANIC.warmLine}` }}>
+              <motion.div animate={{ scale: [1, 1.3, 1] }} transition={{ repeat: Infinity, duration: 2 }}
+                className="h-1.5 w-1.5 rounded-full" style={{ background: ORGANIC.sage }} />
+              <span className="text-[9px] font-black uppercase tracking-[0.22em]" style={{ color: ORGANIC.sage }}>
+                Field Note  ·  Sense Map Match
+              </span>
+            </div>
+            <div className="px-6 py-5">
+              <p className="text-base italic leading-snug mb-3"
+                style={{ color: ORGANIC.charcoal, fontFamily: 'Georgia, serif' }}>
+                "{surfacedVibe.raw}"
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {surfacedVibe.chips.map((chip: string) => (
+                  <span key={chip} className="rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em]"
+                    style={{ background: ORGANIC.cream, border: `1px solid ${ORGANIC.warmLine}`, color: ORGANIC.sage }}>
+                    {chip}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* UGC injection toast */}
+      <AnimatePresence>
+        {ugcInjected && (
+          <motion.div
+            key="result-ugc-toast"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.4 }}
+            className="mb-4 rounded-2xl border border-emerald-400/30 bg-emerald-50/80 px-5 py-3 text-[11px] font-black uppercase tracking-widest text-emerald-600 backdrop-blur-sm"
+          >
+            Field Note Absorbed — Context Orchestration Active
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Pulse wrapper */}
+      <motion.div
+        animate={resultPulse ? { scale: [1, 1.012, 1] } : {}}
+        transition={{ duration: 0.9, ease: "easeOut" }}
+      >
     <div className="relative flex min-h-[600px] flex-col overflow-hidden rounded-[2.5rem] bg-ink p-8 text-white shadow-2xl md:p-12">
       <div className="flex-1">
         <div className="flex items-center gap-3 mb-10">
@@ -365,6 +575,8 @@ function ResultStep({ signal, generatedOutput, onRestart, onGo }: any) {
         </button>
         <button onClick={onRestart} className="text-[11px] font-black uppercase tracking-widest text-white/20 hover:text-white transition">Ignore Recommendation</button>
       </div>
+    </div>
+      </motion.div>
     </div>
   );
 }
@@ -434,7 +646,7 @@ function resolveNodeFromDictionary(node: string) {
   return ISTANBUL_NODE_COORDS[normalized] || null;
 }
 
-function TacticalMapStep({ signal, generatedOutput, onRestart }: any) {
+function TacticalMapStep({ signal, generatedOutput, onRestart, resultPulse, ugcInjected }: any) {
   const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
   const { isLoaded, loadError } = useJsApiLoader({
@@ -493,8 +705,11 @@ function TacticalMapStep({ signal, generatedOutput, onRestart }: any) {
     mapInstance.panTo(center);
   }, [center, mapInstance]);
 
+  // Build map content — single return path enables consistent toast + pulse wrapper
+  let mapContent: React.ReactNode;
+
   if (!googleMapsApiKey) {
-    return (
+    mapContent = (
       <VectorMapFallback
         theme={theme}
         generatedOutput={generatedOutput}
@@ -502,10 +717,8 @@ function TacticalMapStep({ signal, generatedOutput, onRestart }: any) {
         reason="Google Maps key missing. Using vector fallback."
       />
     );
-  }
-
-  if (loadError) {
-    return (
+  } else if (loadError) {
+    mapContent = (
       <VectorMapFallback
         theme={theme}
         generatedOutput={generatedOutput}
@@ -513,10 +726,8 @@ function TacticalMapStep({ signal, generatedOutput, onRestart }: any) {
         reason="Google Maps load failed. Using vector fallback."
       />
     );
-  }
-
-  if (!isLoaded) {
-    return (
+  } else if (!isLoaded) {
+    mapContent = (
       <VectorMapFallback
         theme={theme}
         generatedOutput={generatedOutput}
@@ -524,86 +735,631 @@ function TacticalMapStep({ signal, generatedOutput, onRestart }: any) {
         reason="Loading map layer..."
       />
     );
+  } else {
+    mapContent = (
+      <div className="relative flex min-h-[600px] flex-col overflow-hidden rounded-[3rem] bg-[#0A0C10] text-white border border-white/5">
+        <div className="absolute inset-0">
+          <GoogleMap
+            mapContainerClassName="h-full w-full"
+            zoom={13.5}
+            center={center}
+            onLoad={(map) => setMapInstance(map)}
+            options={{
+              disableDefaultUI: true,
+              clickableIcons: false,
+              gestureHandling: "greedy",
+              minZoom: 11,
+              maxZoom: 16,
+              styles: GOOGLE_MAP_DARK_STYLE as any,
+              backgroundColor: "#0A0C10",
+            }}
+          >
+            <OverlayView position={center} mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}>
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0.5 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+                className="relative -translate-x-1/2 -translate-y-1/2"
+              >
+                <motion.div
+                  animate={{ scale: [1, 1.45], opacity: [0.45, 0] }}
+                  transition={{ repeat: Infinity, duration: 1.9, ease: "easeOut" }}
+                  className="absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                  style={{ backgroundColor: `${theme.primary}55` }}
+                />
+                <div
+                  className="relative rounded-2xl border px-4 py-2 text-[10px] font-black uppercase tracking-[0.16em] shadow-xl"
+                  style={{
+                    borderColor: `${theme.primary}88`,
+                    color: "white",
+                    background: "rgba(10,12,16,0.88)",
+                    boxShadow: `0 12px 32px ${theme.primary}44`,
+                  }}
+                >
+                  {generatedOutput.subNode}
+                </div>
+              </motion.div>
+            </OverlayView>
+          </GoogleMap>
+        </div>
+
+        <div className="relative z-10 p-10 flex flex-col h-full justify-between flex-1">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-white/30 mb-2">Decision Vector</p>
+              <h5 className="text-3xl font-bold tracking-tight">{generatedOutput.subNode}</h5>
+              <p className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-white/30">
+                {isResolvingLocation ? "Resolving neighborhood..." : "Google Maps Synced"}
+              </p>
+            </div>
+            <div className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-bold uppercase tracking-widest text-emerald-400">ISTANBUL LIVE</div>
+          </div>
+
+          <motion.div
+            initial={{ y: 40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="absolute bottom-10 right-10 w-[320px] rounded-[2rem] bg-[#16181D]/90 border border-white/10 p-6 shadow-2xl backdrop-blur-2xl"
+          >
+            <p className="text-lg font-medium leading-snug mb-4">
+              HADE has activated the {generatedOutput.subNode} node based on your current signal.
+            </p>
+            <div className="flex gap-3">
+              <button className="flex-[2] py-3 rounded-2xl bg-white text-ink font-black text-[11px] uppercase tracking-widest">Let's Go</button>
+              <button onClick={onRestart} className="flex-1 py-3 rounded-2xl bg-white/5 font-bold text-[11px] uppercase tracking-widest text-white/40">Exit</button>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="relative flex min-h-[600px] flex-col overflow-hidden rounded-[3rem] bg-[#0A0C10] text-white border border-white/5">
-      <div className="absolute inset-0">
-        <GoogleMap
-          mapContainerClassName="h-full w-full"
-          zoom={13.5}
-          center={center}
-          onLoad={(map) => setMapInstance(map)}
-          options={{
-            disableDefaultUI: true,
-            clickableIcons: false,
-            gestureHandling: "greedy",
-            minZoom: 11,
-            maxZoom: 16,
-            styles: GOOGLE_MAP_DARK_STYLE as any,
-            backgroundColor: "#0A0C10",
-          }}
+    <div>
+      {/* UGC injection toast */}
+      <AnimatePresence>
+        {ugcInjected && (
+          <motion.div
+            key="map-ugc-toast"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.4 }}
+            className="mb-4 rounded-2xl border border-emerald-400/30 bg-emerald-50/80 px-5 py-3 text-[11px] font-black uppercase tracking-widest text-emerald-600 backdrop-blur-sm"
+          >
+            Field Note Absorbed — Context Orchestration Active
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Pulse wrapper */}
+      <motion.div
+        animate={resultPulse ? { scale: [1, 1.012, 1] } : {}}
+        transition={{ duration: 0.9, ease: "easeOut" }}
+      >
+        {mapContent}
+      </motion.div>
+    </div>
+  );
+}
+
+/* --- 4. Vibe Creator Sub-Components --- */
+
+function VoiceVisualizer() {
+  const rings = [
+    { scale: 1.0, maxScale: 1.45, opacity: 0.30, delay: 0 },
+    { scale: 1.0, maxScale: 1.85, opacity: 0.18, delay: 0.45 },
+    { scale: 1.0, maxScale: 2.30, opacity: 0.09, delay: 0.90 },
+  ];
+  const barHeights = [0.45, 0.70, 1.0, 0.80, 0.55, 0.90, 0.50, 0.75, 1.0, 0.65];
+
+  return (
+    <div className="flex flex-col items-center gap-6 py-4">
+      {/* Pulsing concentric rings */}
+      <div className="relative flex h-28 w-28 items-center justify-center">
+        {rings.map((ring, i) => (
+          <motion.div
+            key={i}
+            className="absolute rounded-full"
+            style={{ width: 112, height: 112, border: `1.5px solid ${ORGANIC.sage}` }}
+            animate={{ scale: [ring.scale, ring.maxScale], opacity: [ring.opacity, 0] }}
+            transition={{ repeat: Infinity, duration: 2.4, delay: ring.delay, ease: "easeOut" }}
+          />
+        ))}
+        {/* Centre mic button */}
+        <motion.div
+          className="relative z-10 flex h-14 w-14 items-center justify-center rounded-full"
+          style={{ background: ORGANIC.charcoal, boxShadow: `0 8px 28px ${ORGANIC.sageMid}` }}
+          animate={{ scale: [1, 1.04, 1] }}
+          transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut" }}
         >
-          <OverlayView position={center} mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}>
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0.5 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              className="relative -translate-x-1/2 -translate-y-1/2"
-            >
-              <motion.div
-                animate={{ scale: [1, 1.45], opacity: [0.45, 0] }}
-                transition={{ repeat: Infinity, duration: 1.9, ease: "easeOut" }}
-                className="absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full"
-                style={{ backgroundColor: `${theme.primary}55` }}
-              />
-              <div
-                className="relative rounded-2xl border px-4 py-2 text-[10px] font-black uppercase tracking-[0.16em] shadow-xl"
-                style={{
-                  borderColor: `${theme.primary}88`,
-                  color: "white",
-                  background: "rgba(10,12,16,0.88)",
-                  boxShadow: `0 12px 32px ${theme.primary}44`,
-                }}
-              >
-                {generatedOutput.subNode}
-              </div>
-            </motion.div>
-          </OverlayView>
-        </GoogleMap>
+          <Mic size={20} color={ORGANIC.warmWhite} strokeWidth={1.5} />
+        </motion.div>
       </div>
 
-      <div className="relative z-10 p-10 flex flex-col h-full justify-between flex-1">
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-white/30 mb-2">Decision Vector</p>
-            <h5 className="text-3xl font-bold tracking-tight">{generatedOutput.subNode}</h5>
-            <p className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-white/30">
-              {isResolvingLocation ? "Resolving neighborhood..." : "Google Maps Synced"}
-            </p>
-          </div>
-          <div className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-bold uppercase tracking-widest text-emerald-400">ISTANBUL LIVE</div>
-        </div>
+      {/* Waveform bars */}
+      <div className="flex items-end gap-1.5" style={{ height: 28 }}>
+        {barHeights.map((h, i) => (
+          <motion.div
+            key={i}
+            className="w-1.5 rounded-full origin-bottom"
+            style={{ height: 28 * h, background: ORGANIC.sage }}
+            animate={{ scaleY: [h, Math.min(h + 0.35, 1), h] }}
+            transition={{ repeat: Infinity, duration: 0.9 + i * 0.04, delay: i * 0.07, ease: "easeInOut" }}
+          />
+        ))}
+      </div>
 
+      <p
+        className="text-[10px] font-black uppercase tracking-[0.24em]"
+        style={{ color: ORGANIC.sage }}
+      >
+        Listening
+      </p>
+    </div>
+  );
+}
+
+function DocumentingAnimation({ rawText, chips }: { rawText: string; chips: readonly string[] }) {
+  return (
+    <div className="py-2">
+      {/* Raw text fades out with scan line */}
+      <div
+        className="relative mb-6 overflow-hidden rounded-2xl px-5 py-4"
+        style={{ background: ORGANIC.cream, border: `1px solid ${ORGANIC.warmLine}` }}
+      >
+        <motion.p
+          initial={{ opacity: 1 }}
+          animate={{ opacity: 0.18 }}
+          transition={{ duration: 0.7, delay: 0.25 }}
+          className="text-sm italic leading-relaxed"
+          style={{ color: ORGANIC.charcoal, fontFamily: 'Georgia, serif' }}
+        >
+          {rawText}
+        </motion.p>
         <motion.div
-initial={{ y: 40, opacity: 0 }}
-animate={{ y: 0, opacity: 1 }}
-  className="absolute bottom-10 right-10 w-[320px] rounded-[2rem] bg-[#16181D]/90 border border-white/10 p-6 shadow-2xl backdrop-blur-2xl"
->
-  <p className="text-lg font-medium leading-snug mb-4">
-    HADE has activated the {generatedOutput.subNode} node based on your current signal.
-  </p>
-  <div className="flex gap-3">
-    <button className="flex-[2] py-3 rounded-2xl bg-white text-ink font-black text-[11px] uppercase tracking-widest">Let's Go</button>
-    <button onClick={onRestart} className="flex-1 py-3 rounded-2xl bg-white/5 font-bold text-[11px] uppercase tracking-widest text-white/40">Exit</button>
-  </div>
-</motion.div>
+          className="absolute inset-0"
+          style={{ background: `linear-gradient(90deg, transparent, ${ORGANIC.sage}44, transparent)` }}
+          initial={{ x: "-100%" }}
+          animate={{ x: "110%" }}
+          transition={{ duration: 1.1, ease: "easeInOut" }}
+        />
+      </div>
+
+      {/* Scan progress bar */}
+      <div className="relative mb-5 h-px w-full overflow-hidden rounded-full" style={{ background: ORGANIC.warmLine }}>
+        <motion.div
+          className="absolute inset-y-0 left-0 rounded-full"
+          style={{ background: ORGANIC.sage }}
+          initial={{ width: "0%" }}
+          animate={{ width: "100%" }}
+          transition={{ duration: 1.6, ease: "easeInOut" }}
+        />
+      </div>
+
+      {/* Chips pop in */}
+      <p className="mb-3 text-[9px] font-black uppercase tracking-[0.22em]" style={{ color: ORGANIC.sage }}>
+        Signals Detected
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {chips.map((chip, i) => (
+          <motion.span
+            key={chip}
+            initial={{ opacity: 0, scale: 0.82, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ delay: 0.55 + i * 0.18, duration: 0.35, ease: [0.19, 1, 0.22, 1] }}
+            className="rounded-full px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.16em]"
+            style={{ background: ORGANIC.warmWhite, border: `1px solid ${ORGANIC.warmLine}`, color: ORGANIC.charcoal }}
+          >
+            {chip}
+          </motion.span>
+        ))}
       </div>
     </div>
   );
 }
 
-/* --- 4. Main Controller --- */
+function ConfirmedState({ chips, onClose }: { chips: readonly string[]; onClose: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-6 py-4 text-center">
+      <motion.div
+        animate={{ scale: [1, 1.14, 1], opacity: [0.75, 1, 0.75] }}
+        transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut" }}
+      >
+        <Sparkles size={34} style={{ color: ORGANIC.sage }} />
+      </motion.div>
+
+      <p
+        className="text-lg font-normal leading-snug"
+        style={{ color: ORGANIC.charcoal, fontFamily: 'Georgia, serif', maxWidth: 260 }}
+      >
+        Vibe synchronized to the Discovery Stack.
+      </p>
+
+      <div className="flex flex-wrap justify-center gap-2">
+        {chips.map((chip) => (
+          <span
+            key={chip}
+            className="rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em]"
+            style={{ background: ORGANIC.cream, border: `1px solid ${ORGANIC.warmLine}`, color: ORGANIC.sage }}
+          >
+            {chip}
+          </span>
+        ))}
+      </div>
+
+      <button
+        onClick={onClose}
+        className="mt-1 rounded-full px-8 py-4 text-[11px] font-black uppercase tracking-[0.18em]"
+        style={{ background: ORGANIC.charcoal, color: ORGANIC.warmWhite }}
+      >
+        Done
+      </button>
+    </div>
+  );
+}
+
+interface VibeCreationOverlayProps {
+  vibeMode: VibeMode;
+  activeTab: "voice" | "text";
+  setActiveTab: (t: "voice" | "text") => void;
+  rawText: string;
+  setRawText: (v: string) => void;
+  onCapture: () => void;
+  onClose: () => void;
+}
+
+function VibeCreationOverlay({
+  vibeMode,
+  activeTab,
+  setActiveTab,
+  rawText,
+  setRawText,
+  onCapture,
+  onClose,
+}: VibeCreationOverlayProps) {
+  const chips = VIBE_CHIPS_DEFAULT;
+  const isVisible = vibeMode !== "idle";
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => { setMounted(true); }, []);
+  if (!mounted || !document.body) return null;
+  return createPortal(
+    <AnimatePresence>
+      {isVisible && (
+        <>
+          {/* Scrim */}
+          <motion.div
+            key="vibe-scrim"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="fixed inset-0 z-40"
+            style={{ background: "rgba(44,44,44,0.68)", backdropFilter: "blur(10px)" }}
+            onClick={vibeMode === "sense" ? onClose : undefined}
+          />
+
+          {/* Card panel */}
+          <motion.div
+            key="vibe-panel"
+            initial={{ opacity: 0, scale: 0.96, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 20 }}
+            transition={{ duration: 0.45, ease: [0.19, 1, 0.22, 1] }}
+            className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto px-5 py-6"
+          >
+            <div
+              className="relative w-full max-w-sm rounded-[2.5rem] p-6 max-h-[90vh] overflow-y-auto"
+              style={{ background: ORGANIC.warmWhite, border: `1px solid ${ORGANIC.warmLine}`, boxShadow: "0 24px 64px rgba(44,44,44,0.18)" }}
+            >
+              {/* Close */}
+              {vibeMode === "sense" && (
+                <button
+                  onClick={onClose}
+                  className="absolute right-6 top-6 flex h-8 w-8 items-center justify-center rounded-full transition hover:opacity-60"
+                  style={{ background: ORGANIC.warmLine }}
+                >
+                  <X size={13} style={{ color: ORGANIC.charcoal }} />
+                </button>
+              )}
+
+              {/* Header */}
+              <div className="mb-6 pr-10">
+                <p className="text-[9px] font-black uppercase tracking-[0.24em]" style={{ color: ORGANIC.sage }}>
+                  {vibeMode === "sense" ? "Sense Mode" : vibeMode === "documenting" ? "Orchestrating" : "Synchronized"}
+                </p>
+                <h3
+                  className="mt-1 text-2xl font-normal tracking-wide"
+                  style={{ color: ORGANIC.charcoal, fontFamily: 'Georgia, serif' }}
+                >
+                  {vibeMode === "sense" ? "Create a Vibe" : vibeMode === "documenting" ? "Parsing Signal" : "Vibe Captured"}
+                </h3>
+              </div>
+
+              {/* Body — switches between sense / documenting / confirmed */}
+                {vibeMode === "sense" && (
+                    <div>
+                    {/* Tab selector */}
+                    <div
+                      className="mb-7 flex rounded-2xl p-1"
+                      style={{ background: ORGANIC.cream, border: `1px solid ${ORGANIC.warmLine}` }}
+                    >
+                      {(["voice", "text"] as const).map((tab) => (
+                        <button
+                          key={tab}
+                          onClick={() => setActiveTab(tab)}
+                          className="relative flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-[10px] font-black uppercase tracking-[0.16em] transition-all"
+                          style={{ color: activeTab === tab ? ORGANIC.charcoal : ORGANIC.sage }}
+                        >
+                          {activeTab === tab && (
+                            <motion.div
+                              layoutId="vibe-tab"
+                              className="absolute inset-0 rounded-xl"
+                              style={{ background: ORGANIC.warmWhite, boxShadow: "0 2px 8px rgba(44,44,44,0.08)" }}
+                              transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                            />
+                          )}
+                          <span className="relative z-10 flex items-center gap-1.5">
+                            {tab === "voice" ? <Mic size={12} /> : <FileText size={12} />}
+                            {tab === "voice" ? "Voice" : "Text"}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Voice tab */}
+                    {activeTab === "voice" && (
+                      <div className="flex flex-col gap-5">
+                        <VoiceVisualizer />
+                        {/* Signal preview */}
+                        <div
+                          className="rounded-2xl px-5 py-4 text-center"
+                          style={{ background: ORGANIC.cream, border: `1px solid ${ORGANIC.warmLine}` }}
+                        >
+                          <p className="mb-1 text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: ORGANIC.sage }}>
+                            Signal Preview
+                          </p>
+                          <p
+                            className="text-sm italic leading-relaxed"
+                            style={{ color: ORGANIC.charcoal, fontFamily: 'Georgia, serif' }}
+                          >
+                            "{rawText}"
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Text tab */}
+                    {activeTab === "text" && (
+                      <div>
+                        <textarea
+                          value={rawText}
+                          onChange={(e) => setRawText(e.target.value)}
+                          rows={4}
+                          className="w-full resize-none rounded-2xl px-5 py-4 text-base outline-none"
+                          style={{
+                            background: ORGANIC.cream,
+                            border: `1px solid ${ORGANIC.warmLine}`,
+                            color: ORGANIC.charcoal,
+                            fontFamily: 'Georgia, serif',
+                            fontStyle: "italic",
+                            lineHeight: 1.65,
+                          }}
+                        />
+                        <p className="mt-2 text-right text-[9px]" style={{ color: ORGANIC.sage, opacity: 0.6 }}>
+                          {rawText.length} characters
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Capture CTA */}
+                    <button
+                      onClick={onCapture}
+                      className="mt-6 w-full rounded-full py-4 text-[11px] font-black uppercase tracking-[0.2em] transition-all hover:opacity-90 hover:scale-[1.01]"
+                      style={{ background: ORGANIC.charcoal, color: ORGANIC.warmWhite }}
+                    >
+                      Capture Signal
+                    </button>
+                  </div>
+                )}
+
+                {vibeMode === "documenting" && (
+                  <DocumentingAnimation rawText={rawText} chips={chips} />
+                )}
+
+                {vibeMode === "confirmed" && (
+                  <ConfirmedState chips={chips} onClose={onClose} />
+                )}
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>,
+    document.body
+  );
+}
+
+/* --- 5. UGC Sub-Components --- */
+
+function UGCBottomSheet({ open, onClose, onSelect }: {
+  open: boolean;
+  onClose: () => void;
+  onSelect: (preset: UGCPreset) => void;
+}) {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => { setMounted(true); }, []);
+  if (!mounted || !document.body) return null;
+  return createPortal(
+    <AnimatePresence>
+      {open && (
+        <>
+          {/* Scrim */}
+          <motion.div
+            key="ugc-scrim"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            onClick={onClose}
+            className="fixed inset-0 z-40 bg-ink/40 backdrop-blur-sm"
+          />
+
+          {/* Sheet */}
+          <motion.div
+            key="ugc-sheet"
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", stiffness: 340, damping: 38 }}
+            className="fixed bottom-0 left-0 right-0 z-50 max-h-[90vh] overflow-y-auto rounded-t-[2.5rem] border-t border-white/60 bg-white/85 px-6 pb-10 pt-5 shadow-2xl backdrop-blur-3xl"
+          >
+            {/* Handle */}
+            <div className="mx-auto mb-7 h-1 w-12 rounded-full bg-ink/15" />
+
+            {/* Header */}
+            <div className="mb-7 flex items-start justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-ink/35">Capture Context</p>
+                <h2
+                  className="mt-1 text-2xl font-normal tracking-tight text-ink"
+                  style={{ fontFamily: 'Georgia, serif' }}
+                >
+                  Field Notes
+                </h2>
+                <p className="mt-1 text-sm text-ink/45 leading-relaxed">
+                  Inject a live signal into the HADE engine — the sense map recalibrates instantly.
+                </p>
+              </div>
+              <button
+                onClick={onClose}
+                className="ml-4 mt-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-ink/5 hover:bg-ink/10 transition"
+              >
+                <X size={14} className="text-ink/50" />
+              </button>
+            </div>
+
+            {/* Preset Cards */}
+            <div className="grid grid-cols-1 gap-3">
+              {UGC_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  onClick={() => onSelect(preset)}
+                  className="group w-full rounded-2xl border border-ink/[0.07] bg-white/60 p-5 text-left transition-all hover:bg-ink/[0.03] hover:border-ink/[0.14] active:scale-[0.99]"
+                >
+                  <div className="flex items-start gap-4">
+                    {/* Icon pill */}
+                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-ink/[0.05] text-ink/50 group-hover:bg-ink/[0.09] transition">
+                      {UGC_ICONS[preset.id]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-[10px] font-black uppercase tracking-[0.18em] text-ink/40">{preset.label}</span>
+                        <span
+                          className="text-sm font-normal text-ink/70"
+                          style={{ fontFamily: 'Georgia, serif' }}
+                        >
+                          {preset.sublabel}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm leading-relaxed text-ink/55">{preset.description}</p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <p className="mt-6 text-center text-[9px] font-bold uppercase tracking-[0.2em] text-ink/20">
+              Context Orchestration  ·  Agentic Discovery Stack
+            </p>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>,
+    document.body
+  );
+}
+
+function UGCProcessingOverlay({ preset }: { preset: UGCPreset }) {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => { setMounted(true); }, []);
+  if (!mounted || !document.body) return null;
+  return createPortal(
+    <motion.div
+      key="ugc-overlay"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.25 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/55 backdrop-blur-md px-6"
+    >
+      <motion.div
+        initial={{ scale: 0.96, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.96, opacity: 0 }}
+        transition={{ duration: 0.3, ease: [0.19, 1, 0.22, 1] }}
+        className="w-full max-w-sm rounded-[2.5rem] bg-white/92 p-10 shadow-2xl backdrop-blur-2xl"
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-6">
+          <motion.div
+            animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
+            transition={{ repeat: Infinity, duration: 1.6 }}
+            className="h-2 w-2 rounded-full bg-emerald-500"
+          />
+          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-ink/40">Sense Mapping</p>
+        </div>
+
+        <h3
+          className="text-2xl font-normal tracking-tight text-ink mb-3"
+          style={{ fontFamily: 'Georgia, serif' }}
+        >
+          Parsing Field Note
+        </h3>
+
+        {/* Input description with scanning underline */}
+        <div className="relative mb-8 overflow-hidden rounded-xl bg-ink/[0.03] px-4 py-3">
+          <p className="text-sm italic text-ink/60 leading-relaxed">"{preset.description}"</p>
+          <motion.div
+            initial={{ x: "-100%" }}
+            animate={{ x: "100%" }}
+            transition={{ duration: 1.4, ease: "easeInOut", repeat: 1, repeatDelay: 0.2 }}
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-400/20 to-transparent"
+          />
+        </div>
+
+        {/* Extracted tags — staggered appearance */}
+        <div className="space-y-2">
+          <p className="text-[9px] font-black uppercase tracking-[0.22em] text-ink/30 mb-3">Context Signals Extracted</p>
+          <div className="flex flex-wrap gap-2">
+            {preset.extractedTags.map((tag, i) => (
+              <motion.span
+                key={tag}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.55 + i * 0.14, duration: 0.35, ease: "easeOut" }}
+                className="rounded-full border border-ink/10 bg-ink/[0.04] px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-ink/60"
+              >
+                {tag}
+              </motion.span>
+            ))}
+          </div>
+        </div>
+
+        {/* Closing copy */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.9, duration: 0.4 }}
+          className="mt-7 text-[9px] font-bold uppercase tracking-[0.2em] text-ink/25"
+        >
+          Context Orchestration Complete
+        </motion.p>
+      </motion.div>
+    </motion.div>,
+    document.body
+  );
+}
+
+/* --- 5. Main Controller --- */
 
 export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
   const [step, setStep] = useState<StepId>("input");
@@ -614,6 +1370,19 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const exploreStartRef = useRef<number>(0);
+
+  // UGC Field Notes state
+  const [ugcSheetOpen, setUgcSheetOpen] = useState(false);
+  const [ugcProcessingPreset, setUgcProcessingPreset] = useState<UGCPreset | null>(null);
+  const [ugcInjected, setUgcInjected] = useState<UGCPreset | null>(null);
+  const [resultPulse, setResultPulse] = useState(false);
+
+  // Vibe Creator state — fully isolated from step machine
+  const [vibeMode, setVibeMode] = useState<VibeMode>("idle");
+  const [vibeRaw, setVibeRaw] = useState(SAMPLE_VIBE_TEXT);
+  const [vibeActiveTab, setVibeActiveTab] = useState<"voice" | "text">("voice");
+  const [storedVibes, setStoredVibes] = useState<StoredVibe[]>([]);
+
   const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
 
   const handleTimerComplete = useCallback(() => {
@@ -623,6 +1392,48 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
       setTimerDone(true);
     }
   }, [step]);
+
+  // UGC Context Injection — isolated handler, does not touch existing step-machine logic
+  const handleUGCInjection = useCallback((preset: UGCPreset) => {
+    setUgcSheetOpen(false);
+    setUgcProcessingPreset(preset); // triggers UGCProcessingOverlay
+
+    // After 2400ms sense-mapping animation, inject context into engine state
+    setTimeout(() => {
+      setSignal((prev) => ({
+        ...prev,
+        combinedSignal: prev.combinedSignal.trim()
+          ? `${prev.combinedSignal} — ${preset.injectedSignal}`
+          : preset.injectedSignal,
+      }));
+      setUgcInjected(preset);
+      setUgcProcessingPreset(null);
+
+      // Pulse the result/map card if already on those steps
+      setResultPulse((prev) => {
+        if (step === "result" || step === "mapping") {
+          setTimeout(() => setResultPulse(false), 900);
+          return true;
+        }
+        return prev;
+      });
+    }, 2400);
+  }, [step]);
+
+  // Vibe Creator handler — isolated from all Discovery step-machine state
+  const handleVibeCapture = useCallback(() => {
+    setVibeMode("documenting");
+    setTimeout(() => {
+      const newVibe: StoredVibe = {
+        id: `vibe-${Date.now()}`,
+        raw: vibeRaw,
+        chips: [...VIBE_CHIPS_DEFAULT],
+        timestamp: Date.now(),
+      };
+      setStoredVibes((prev) => [newVibe, ...prev]);
+      setVibeMode("confirmed");
+    }, 1900);
+  }, [vibeRaw]);
 
   // Gate: when data is ready, Llama exits immediately; Gemini waits for timer pulse.
   // Claude uses its own setTimeout path in handleExplore and is excluded here.
@@ -767,6 +1578,10 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
     setDataReady(false);
     setIsLoading(false);
     setApiError(null);
+    setUgcInjected(null);
+    setResultPulse(false);
+    setVibeMode("idle");
+    // storedVibes intentionally preserved — vibes persist across restarts
   };
 
   const safeOutput =
@@ -775,6 +1590,9 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
       : DEFAULT_OUTPUT;
 
   const themeColor = accent || "#10B981"; // Fallback to a default if not provided
+
+  // Derived — no extra state. Recalculates whenever search text or stored vibes change.
+  const surfacedVibe = surfaceUGCContext(signal.combinedSignal, storedVibes);
 
   return (
     <section className="w-full py-12 px-6 md:px-0 mx-auto max-w-7xl">
@@ -803,7 +1621,17 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
 
       <AnimatePresence mode="popLayout" initial={false}>
         <motion.div key={step} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.6, ease: [0.19, 1, 0.22, 1] }}>
-          {step === "input" && <UnifiedInputStep signal={signal} setSignal={setSignal} onNext={handleExplore} isLoading={isLoading} />}
+          {step === "input" && (
+            <UnifiedInputStep
+              signal={signal}
+              setSignal={setSignal}
+              onNext={handleExplore}
+              isLoading={isLoading}
+              onCaptureContext={() => setUgcSheetOpen(true)}
+              onCreateVibe={() => { setVibeMode("sense"); setVibeActiveTab("voice"); }}
+              surfacedVibe={surfacedVibe}
+            />
+          )}
           {step === "processing" && (
             <ProcessingStep
               key={`processing-${signal.llmChoice}`}
@@ -812,10 +1640,42 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
               duration={signal.llmChoice === "llama" ? 0 : signal.llmChoice === "claude" ? 1800 : 3200}
             />
           )}
-          {step === "result" && <ResultStep signal={signal} generatedOutput={safeOutput} onRestart={restart} onGo={() => setStep("mapping")} />}
-          {step === "mapping" && <TacticalMapStep signal={signal} generatedOutput={safeOutput} onRestart={restart} />}
+          {step === "result" && (
+            <ResultStep
+              signal={signal}
+              generatedOutput={safeOutput}
+              onRestart={restart}
+              onGo={() => setStep("mapping")}
+              resultPulse={resultPulse}
+              ugcInjected={ugcInjected}
+              surfacedVibe={surfacedVibe}
+            />
+          )}
+          {step === "mapping" && <TacticalMapStep signal={signal} generatedOutput={safeOutput} onRestart={restart} resultPulse={resultPulse} ugcInjected={ugcInjected} />}
         </motion.div>
       </AnimatePresence>
+
+      {/* UGC overlays — rendered outside step AnimatePresence so they float above all steps */}
+      <AnimatePresence>
+        {ugcProcessingPreset && <UGCProcessingOverlay preset={ugcProcessingPreset} />}
+      </AnimatePresence>
+
+      {/* Vibe Creator overlay — isolated Vibe state machine, never touches StepId */}
+      <VibeCreationOverlay
+        vibeMode={vibeMode}
+        activeTab={vibeActiveTab}
+        setActiveTab={setVibeActiveTab}
+        rawText={vibeRaw}
+        setRawText={setVibeRaw}
+        onCapture={handleVibeCapture}
+        onClose={() => setVibeMode("idle")}
+      />
+
+      <UGCBottomSheet
+        open={ugcSheetOpen}
+        onClose={() => setUgcSheetOpen(false)}
+        onSelect={handleUGCInjection}
+      />
 
       <div className="mt-12 flex justify-center gap-3">
         {(["input", "processing", "result", "mapping"] as StepId[]).map((s) => (

@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "next-dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": ["-c", "PATH=/Users/danielmeier/.nvm/versions/node/v20.20.1/bin:$PATH npm run dev"],
       "port": 3000,
       "autoPort": false
     }

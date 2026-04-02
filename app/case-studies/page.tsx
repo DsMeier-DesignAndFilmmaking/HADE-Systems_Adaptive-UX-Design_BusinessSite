@@ -43,7 +43,7 @@ const HOW_HADE_WORKS = [
     step: "01",
     icon: <Activity className="w-4 h-4" />,
     title: "Detect",
-    body: "We capture behavioral and contextual signals — hesitation, usage depth, lifecycle stage, and intent markers in real time.",
+    body: "Capture behavioral and contextual signals — hesitation, usage depth, lifecycle stage, and intent markers in real time.",
   },
   {
     step: "02",
@@ -156,7 +156,7 @@ export default function CaseStudiesPage() {
       {/* ── CTA + Sticky ────────────────────────────────────────────── */}
       <CTASection
         title="Stop Designing Static Experiences"
-        body="Start building systems that adapt, learn, and drive revenue."
+        body="Start building systems that adapt, learn, and drive engagement."
         primaryLabel="Run an Adaptive UX Sprint"
         secondaryLabel="View Engagement Model"
       />
