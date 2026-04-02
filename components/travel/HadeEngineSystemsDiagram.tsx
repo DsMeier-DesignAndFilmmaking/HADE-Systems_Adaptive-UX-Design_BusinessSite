@@ -101,7 +101,7 @@ const MODULE_THEMES: Record<ModuleContext, {
     resultTitle: "A Change of Plans?",
     baseDesc: "We've found a hidden node along the Bosphorus that holds the exact atmosphere you're after.",
     tagline: "Live Environment",
-    action: "See the Spot"
+    action: "Make The Move"
   },
   "expert-network": { 
     primary: "#6366F1", 
@@ -328,7 +328,7 @@ function NeuralBackboneSheet({ open, onClose, llmChoice, onSelect }: {
   );
 }
 
-function UnifiedInputStep({ signal, setSignal, onNext, isLoading, onCaptureContext, onCreateVibe, onOpenBackbone, surfacedVibe }: any) {
+function UnifiedInputStep({ signal, setSignal, onNext, isLoading, onCaptureContext, onCreateVibe, onOpenBackbone, surfacedVibe, mainInputRef }: any) {
   const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
   const hasSignalInput = signal.combinedSignal.trim().length > 0;
   return (
@@ -393,9 +393,12 @@ function UnifiedInputStep({ signal, setSignal, onNext, isLoading, onCaptureConte
         </AnimatePresence>
 
         <textarea
+          ref={mainInputRef}
           value={signal.combinedSignal}
           onChange={(e) => setSignal((p: any) => ({ ...p, combinedSignal: e.target.value }))}
-          className="mt-10 w-full resize-none rounded-[1.5rem] border-none bg-ink/[0.03] p-6 text-xl outline-none transition-all focus:bg-ink/[0.05] placeholder:text-ink/10"
+          disabled={isLoading}
+          suppressHydrationWarning
+          className="relative z-10 mt-10 w-full resize-none rounded-[1.5rem] border-none bg-ink/[0.03] p-6 text-xl outline-none transition-all focus:bg-ink/[0.05] placeholder:text-ink/10 disabled:cursor-not-allowed disabled:opacity-70"
           placeholder="e.g. 'I'm tired of tourist spots, show me where the locals hide when it rains'..."
           rows={3}
         />
@@ -603,18 +606,31 @@ function ResultStep({ signal, generatedOutput, onRestart, onGo, resultPulse, ugc
 }
 
 function VectorMapFallback({ theme, generatedOutput, onRestart, reason }: any) {
+  const vectorRays = React.useMemo(
+    () =>
+      Array.from({ length: 6 }, (_, i) => {
+        const angle = (i / 6) * Math.PI * 2;
+        const radiusX = 160 + i * 22;
+        const radiusY = 120 + i * 18;
+        const x = 400 + Math.cos(angle) * radiusX;
+        const y = 300 + Math.sin(angle) * radiusY;
+        return `M ${x.toFixed(2)} ${y.toFixed(2)} L 400 300`;
+      }),
+    []
+  );
+
   return (
     <div className="relative flex min-h-[600px] flex-col overflow-hidden rounded-[3rem] bg-[#0A0C10] text-white border border-white/5">
       <div className="absolute inset-0 opacity-40">
         <svg width="100%" height="100%">
           <rect width="100%" height="100%" fill={`radial-gradient(circle, ${theme.primary}22 0%, transparent 70%)`} />
-          {[...Array(6)].map((_, i) => (
+          {vectorRays.map((path, i) => (
             <motion.path
               key={i}
               initial={{ pathLength: 0, opacity: 0 }}
               animate={{ pathLength: 1, opacity: 0.15 }}
               transition={{ duration: 2, delay: i * 0.2 }}
-              d={`M ${400 + (Math.random() - 0.5) * 400} ${300 + (Math.random() - 0.5) * 300} L 400 300`}
+              d={path}
               stroke="white"
               strokeWidth="1"
               fill="none"
@@ -1000,7 +1016,11 @@ function VibeCreationOverlay({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
             className="fixed inset-0 z-40"
-            style={{ background: "rgba(44,44,44,0.68)", backdropFilter: "blur(10px)" }}
+            style={{
+              background: "rgba(44,44,44,0.68)",
+              backdropFilter: "blur(10px)",
+              pointerEvents: vibeMode === "confirmed" ? "none" : "auto",
+            }}
             onClick={vibeMode === "sense" ? onClose : undefined}
           />
 
@@ -1012,6 +1032,7 @@ function VibeCreationOverlay({
             exit={{ opacity: 0, scale: 0.96, y: 20 }}
             transition={{ duration: 0.45, ease: [0.19, 1, 0.22, 1] }}
             className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto px-5 py-6"
+            style={{ pointerEvents: vibeMode === "confirmed" ? "none" : "auto" }}
           >
             <div
               className="relative w-full max-w-sm rounded-[2.5rem] p-6 max-h-[90vh] overflow-y-auto"
@@ -1072,7 +1093,6 @@ function VibeCreationOverlay({
                       ))}
                     </div>
 
-                    {/* Voice tab */}
                     {activeTab === "voice" && (
                       <SenseVoiceInput
                         value={rawText}
@@ -1144,9 +1164,13 @@ function UGCBottomSheet({ open, onClose, onSubmit }: {
   const [inputText, setInputText]       = React.useState("");
   const [photoAttached, setPhotoAttached] = React.useState(false);
   const [submitted, setSubmitted]       = React.useState(false);
+  const [isMacPlatform, setIsMacPlatform] = React.useState(false);
   const textareaRef                     = React.useRef<HTMLTextAreaElement>(null);
 
   React.useEffect(() => { setMounted(true); }, []);
+  React.useEffect(() => {
+    setIsMacPlatform(typeof navigator !== "undefined" && navigator.platform.includes("Mac"));
+  }, []);
 
   /* Auto-focus textarea when sheet opens; reset state when it closes */
   React.useEffect(() => {
@@ -1375,7 +1399,7 @@ function UGCBottomSheet({ open, onClose, onSubmit }: {
 
                     {/* Hint */}
                     <p className="mt-3 text-center text-[8.5px] font-bold uppercase tracking-[0.2em] text-ink/18">
-                      {navigator?.platform?.includes("Mac") ? "⌘ Return to send" : "Ctrl + Return to send"}
+                      {isMacPlatform ? "⌘ Return to send" : "Ctrl + Return to send"}
                       {" · "}Context Orchestration
                     </p>
                   </motion.div>
@@ -1401,6 +1425,8 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const exploreStartRef = useRef<number>(0);
+  const mainInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const previousVibeModeRef = useRef<VibeMode>("idle");
 
   // Neural Backbone sheet
   const [backboneSheetOpen, setBackboneSheetOpen] = useState(false);
@@ -1440,16 +1466,28 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
 
   // Vibe Creator handler — isolated from all Discovery step-machine state
   const handleVibeCapture = useCallback(() => {
+    const capturedVibe = vibeRaw.trim();
+
+    if (!capturedVibe) return;
+
     setVibeMode("documenting");
+
+    const newVibe: StoredVibe = {
+      id: `vibe-${Date.now()}`,
+      raw: capturedVibe,
+      chips: [...VIBE_CHIPS_DEFAULT],
+      timestamp: Date.now(),
+    };
+    setStoredVibes((prev) => [newVibe, ...prev]);
+
     setTimeout(() => {
-      const newVibe: StoredVibe = {
-        id: `vibe-${Date.now()}`,
-        raw: vibeRaw,
-        chips: [...VIBE_CHIPS_DEFAULT],
-        timestamp: Date.now(),
-      };
-      setStoredVibes((prev) => [newVibe, ...prev]);
       setVibeMode("confirmed");
+      setIsLoading(false);
+
+      // Return to idle after a short confirmation beat.
+      setTimeout(() => {
+        setVibeMode("idle");
+      }, 900);
     }, 1900);
   }, [vibeRaw]);
 
@@ -1471,6 +1509,32 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
       setIsLoading(false);
     }
   }, [step]);
+
+  // Focus restoration after the modal closes.
+  useEffect(() => {
+    const previous = previousVibeModeRef.current;
+    previousVibeModeRef.current = vibeMode;
+    if (vibeMode !== "idle" || previous === "idle") return;
+
+    const focusTimer = window.setTimeout(() => {
+      mainInputRef.current?.focus();
+    }, 50);
+
+    return () => window.clearTimeout(focusTimer);
+  }, [vibeMode]);
+
+  const openVibeCreator = useCallback(() => {
+    // Strict silo: modal state is initialized independently from main input state.
+    setVibeRaw(SAMPLE_VIBE_TEXT);
+    setVibeActiveTab("voice");
+    setVibeMode("sense");
+  }, []);
+
+  const closeVibeCreator = useCallback(() => {
+    setVibeMode("idle");
+    setIsLoading(false);
+    setVibeRaw(SAMPLE_VIBE_TEXT);
+  }, []);
 
   const isValidDecisionNode = (value: unknown): value is DecisionNode => {
     if (!value || typeof value !== "object") return false;
@@ -1626,6 +1690,9 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-ink/40">Spontaneity Engine v4.2</p>
         </div>
         <h2 className="text-5xl md:text-6xl font-bold tracking-tighter">HADE Orchestration</h2>
+        <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.25em] text-ink/20 italic">
+        Interface Prototype • Production Environment in Development
+      </p>
       </div>
 
       <AnimatePresence>
@@ -1652,9 +1719,10 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
               onNext={handleExplore}
               isLoading={isLoading}
               onCaptureContext={() => setUgcSheetOpen(true)}
-              onCreateVibe={() => { setVibeMode("sense"); setVibeActiveTab("voice"); }}
+              onCreateVibe={openVibeCreator}
               onOpenBackbone={() => setBackboneSheetOpen(true)}
               surfacedVibe={surfacedVibe}
+              mainInputRef={mainInputRef}
             />
           )}
           {step === "processing" && (
@@ -1688,7 +1756,7 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
         rawText={vibeRaw}
         setRawText={setVibeRaw}
         onCapture={handleVibeCapture}
-        onClose={() => setVibeMode("idle")}
+        onClose={closeVibeCreator}
       />
 
       <UGCBottomSheet

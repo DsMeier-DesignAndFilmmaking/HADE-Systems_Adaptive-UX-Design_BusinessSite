@@ -1,5 +1,8 @@
+"use client";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+/* --- 1. Type Definitions for Web Speech API --- */
 interface SpeechRecognitionAlternativeLike {
   transcript: string;
 }
@@ -15,7 +18,8 @@ interface SpeechRecognitionResultListLike {
   [index: number]: SpeechRecognitionResultLike;
 }
 
-interface SpeechRecognitionEventLike extends Event {
+interface SpeechRecognitionEventLike {
+  resultIndex: number;
   results: SpeechRecognitionResultListLike;
 }
 
@@ -57,7 +61,7 @@ interface UseSpeechToTextOptions {
 interface UseSpeechToTextReturn {
   isSupported: boolean;
   isListening: boolean;
-  transcript: string;
+  transcript: string; // The combined "Live" value
   finalTranscript: string;
   interimTranscript: string;
   audioLevel: number;
@@ -71,75 +75,51 @@ interface UseSpeechToTextReturn {
 
 const DEFAULT_SILENCE_MS = 2600;
 
+/* --- 2. Helper Utilities --- */
 const normalizeSpacing = (value: string): string =>
   value.replace(/\s+/g, " ").trim();
 
-const joinParts = (...parts: string[]): string =>
-  normalizeSpacing(parts.filter((part) => part.trim().length > 0).join(" "));
-
 const mapSpeechError = (errorCode: string): string => {
-  if (errorCode === "not-allowed" || errorCode === "service-not-allowed") {
-    return "Microphone permission denied. Enable mic access to use Sense Mode voice input.";
-  }
-  if (errorCode === "audio-capture") {
-    return "No microphone was detected. Connect a microphone and try again.";
-  }
-  if (errorCode === "no-speech") {
-    return "No speech detected. Try speaking a bit louder.";
-  }
-  return "Voice input is currently unavailable. Please try again.";
+  const errors: Record<string, string> = {
+    "not-allowed": "Microphone permission denied. Enable mic access to use Sense Mode.",
+    "service-not-allowed": "Microphone permission denied. Enable mic access to use Sense Mode.",
+    "audio-capture": "No microphone detected. Connect a mic and try again.",
+    "no-speech": "No speech detected. Try speaking a bit louder.",
+  };
+  return errors[errorCode] || "Voice input is currently unavailable. Please try again.";
 };
 
+/* --- 3. The Hook --- */
 export function useSpeechToText({
   initialTranscript = "",
   lang = "en-US",
   silenceDelayMs = DEFAULT_SILENCE_MS,
   onTranscriptChange,
 }: UseSpeechToTextOptions = {}): UseSpeechToTextReturn {
+  
   const [isListening, setIsListening] = useState(false);
   const [finalTranscript, setFinalTranscript] = useState(normalizeSpacing(initialTranscript));
   const [interimTranscript, setInterimTranscript] = useState("");
-  const [transcript, setTranscriptState] = useState(normalizeSpacing(initialTranscript));
   const [audioLevel, setAudioLevel] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+  /* --- REFS (Consolidated & Fixed) --- */
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
-  const silenceTimerRef = useRef<number | null>(null);
   const isListeningRef = useRef(false);
-  const transcriptRef = useRef(normalizeSpacing(initialTranscript));
+  const silenceTimerRef = useRef<number | null>(null);
   const finalTranscriptRef = useRef(normalizeSpacing(initialTranscript));
-  const interimTranscriptRef = useRef("");
-  const baseTranscriptRef = useRef(normalizeSpacing(initialTranscript));
-  const sessionCommittedRef = useRef(normalizeSpacing(initialTranscript));
+
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioStreamRef = useRef<MediaStream | null>(null);
-  const audioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const audioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null); 
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioRafRef = useRef<number | null>(null);
 
-  const updateSegments = useCallback((nextFinal: string, nextInterim: string) => {
-    const normalizedFinal = normalizeSpacing(nextFinal);
-    const normalizedInterim = normalizeSpacing(nextInterim);
-    const combined = joinParts(normalizedFinal, normalizedInterim);
-
-    finalTranscriptRef.current = normalizedFinal;
-    interimTranscriptRef.current = normalizedInterim;
-    transcriptRef.current = combined;
-
-    setFinalTranscript(normalizedFinal);
-    setInterimTranscript(normalizedInterim);
-    setTranscriptState(combined);
-  }, []);
-
-  const setTranscript = useCallback((value: string) => {
-    const normalized = normalizeSpacing(value);
-    updateSegments(normalized, "");
-
-    if (!isListeningRef.current) {
-      baseTranscriptRef.current = normalized;
-      sessionCommittedRef.current = normalized;
-    }
-  }, [updateSegments]);
+  // Calculate the "Live" transcript shown in the UI
+  const transcript = useMemo(() => {
+    const combined = `${finalTranscript} ${interimTranscript}`.trim();
+    return normalizeSpacing(combined);
+  }, [finalTranscript, interimTranscript]);
 
   const clearSilenceTimer = useCallback(() => {
     if (silenceTimerRef.current !== null) {
@@ -151,7 +131,6 @@ export function useSpeechToText({
   const resetSilenceTimer = useCallback(() => {
     clearSilenceTimer();
     if (!isListeningRef.current) return;
-
     silenceTimerRef.current = window.setTimeout(() => {
       recognitionRef.current?.stop();
     }, silenceDelayMs);
@@ -167,7 +146,7 @@ export function useSpeechToText({
       try {
         audioSourceRef.current.disconnect();
       } catch {
-        // no-op
+        // Already disconnected
       }
       audioSourceRef.current = null;
     }
@@ -179,8 +158,14 @@ export function useSpeechToText({
       audioStreamRef.current = null;
     }
 
+    // FIXED: Guard against closing an already closed context to prevent InvalidStateError
     if (audioContextRef.current) {
-      void audioContextRef.current.close().catch(() => undefined);
+      const ctx = audioContextRef.current;
+      if (ctx.state !== "closed") {
+        void ctx.close().catch(() => {
+          console.warn("AudioContext already closing or closed.");
+        });
+      }
       audioContextRef.current = null;
     }
 
@@ -188,246 +173,148 @@ export function useSpeechToText({
   }, []);
 
   const startAudioAnalysis = useCallback(async () => {
-    if (typeof window === "undefined") return;
-    if (!navigator.mediaDevices?.getUserMedia) return;
-
-    const AudioContextCtor = window.AudioContext ?? window.webkitAudioContext;
-    if (!AudioContextCtor) return;
-
-    stopAudioAnalysis();
+    if (typeof window === "undefined" || !navigator.mediaDevices?.getUserMedia) return;
+    const Ctor = window.AudioContext ?? window.webkitAudioContext;
+    if (!Ctor) return;
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       if (!isListeningRef.current) {
-        stream.getTracks().forEach((track) => track.stop());
+        stream.getTracks().forEach(t => t.stop());
         return;
       }
 
-      const context = new AudioContextCtor();
+      const context = new Ctor();
       const source = context.createMediaStreamSource(stream);
       const analyser = context.createAnalyser();
       analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.82;
       source.connect(analyser);
 
-      audioContextRef.current = context;
       audioStreamRef.current = stream;
+      audioContextRef.current = context;
       audioSourceRef.current = source;
       analyserRef.current = analyser;
 
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      const data = new Uint8Array(analyser.frequencyBinCount);
       const sample = () => {
-        const activeAnalyser = analyserRef.current;
-        if (!activeAnalyser || !isListeningRef.current) {
+        if (!isListeningRef.current || !analyserRef.current) {
           setAudioLevel(0);
           return;
         }
-
-        activeAnalyser.getByteFrequencyData(dataArray);
-        const total = dataArray.reduce((sum, value) => sum + value, 0);
-        const level = total / dataArray.length / 255;
-        setAudioLevel(level);
-        audioRafRef.current = window.requestAnimationFrame(sample);
+        analyserRef.current.getByteFrequencyData(data);
+        const avg = data.reduce((a, b) => a + b, 0) / data.length / 255;
+        setAudioLevel(avg);
+        audioRafRef.current = requestAnimationFrame(sample);
       };
-
       sample();
-    } catch (error) {
-      const maybeDomError = error as DOMException;
-      if (maybeDomError?.name === "NotAllowedError") {
-        setError(mapSpeechError("not-allowed"));
-      }
+    } catch {
       setAudioLevel(0);
     }
-  }, [stopAudioAnalysis]);
-
-  const recognitionConstructor = useMemo<SpeechRecognitionConstructor | null>(() => {
-    if (typeof window === "undefined") return null;
-    return window.webkitSpeechRecognition ?? window.SpeechRecognition ?? null;
   }, []);
 
-  const isSupported = recognitionConstructor !== null;
-
   useEffect(() => {
-    if (!recognitionConstructor) return;
+    const Ctor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!Ctor) {
+      setError("Speech recognition not supported.");
+      return;
+    }
 
-    const recognition = new recognitionConstructor();
+    const recognition = new Ctor() as SpeechRecognitionLike;
     recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.maxAlternatives = 1;
+    recognition.interimResults = true; 
     recognition.lang = lang;
 
     recognition.onstart = () => {
       isListeningRef.current = true;
       setIsListening(true);
       setError(null);
+      setInterimTranscript("");
       resetSilenceTimer();
       void startAudioAnalysis();
     };
 
-    recognition.onresult = (event) => {
-      let finalAccumulator = "";
-      let interimAccumulator = "";
+    recognition.onresult = (event: SpeechRecognitionEventLike) => {
+      let newlyFinalized = "";
+      let currentInterim = "";
 
-      for (let index = 0; index < event.results.length; index += 1) {
-        const result = event.results[index];
-        const spokenChunk = result[0]?.transcript ?? "";
-        if (!spokenChunk.trim()) continue;
-
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        const result = event.results[i];
         if (result.isFinal) {
-          finalAccumulator = `${finalAccumulator} ${spokenChunk}`;
+          newlyFinalized += result[0].transcript;
         } else {
-          interimAccumulator = `${interimAccumulator} ${spokenChunk}`;
+          currentInterim += result[0].transcript;
         }
       }
 
-      // Accumulator pattern:
-      // base finalized text + finalized chunks + live interim guess.
-      const committed = joinParts(baseTranscriptRef.current, finalAccumulator);
-      const interim = normalizeSpacing(interimAccumulator);
+      if (newlyFinalized) {
+        const updatedFinal = normalizeSpacing(finalTranscriptRef.current + " " + newlyFinalized);
+        finalTranscriptRef.current = updatedFinal;
+        setFinalTranscript(updatedFinal);
+        if (onTranscriptChange) onTranscriptChange(updatedFinal);
+      }
 
-      sessionCommittedRef.current = committed;
-      updateSegments(committed, interim);
+      setInterimTranscript(currentInterim);
       resetSilenceTimer();
     };
 
-    recognition.onerror = (event) => {
-      const shouldResetListening =
-        event.error === "not-allowed" ||
-        event.error === "service-not-allowed" ||
-        event.error === "no-speech";
-
-      setError(mapSpeechError(event.error));
-      clearSilenceTimer();
-
-      if (shouldResetListening) {
-        isListeningRef.current = false;
+    recognition.onerror = (e: SpeechRecognitionErrorEventLike) => {
+      setError(mapSpeechError(e.error));
+      if (["not-allowed", "no-speech"].includes(e.error)) {
         setIsListening(false);
-        const committedTranscript = sessionCommittedRef.current || finalTranscriptRef.current || transcriptRef.current;
-        updateSegments(committedTranscript, "");
+        isListeningRef.current = false;
       }
-      stopAudioAnalysis();
     };
 
     recognition.onend = () => {
       isListeningRef.current = false;
       setIsListening(false);
-      clearSilenceTimer();
+      setInterimTranscript("");
       stopAudioAnalysis();
-
-      // Commit only final speech chunks at session end (drops stale interim text).
-      const committedTranscript = sessionCommittedRef.current || finalTranscriptRef.current || transcriptRef.current;
-      updateSegments(committedTranscript, "");
-      baseTranscriptRef.current = committedTranscript;
-      sessionCommittedRef.current = committedTranscript;
     };
 
     recognitionRef.current = recognition;
-
     return () => {
       clearSilenceTimer();
       stopAudioAnalysis();
-      recognition.onstart = null;
-      recognition.onresult = null;
-      recognition.onerror = null;
-      recognition.onend = null;
-
-      try {
-        recognition.stop();
-      } catch {
-        // No-op: stop can throw on already-stopped recognizers.
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        recognitionRef.current.onstart = null;
+        recognitionRef.current.onresult = null;
+        recognitionRef.current.onerror = null;
+        recognitionRef.current.onend = null;
       }
-
-      try {
-        recognition.abort();
-      } catch {
-        // No-op: abort can throw on already-stopped recognizers.
-      }
-
-      recognitionRef.current = null;
-      isListeningRef.current = false;
     };
-  }, [
-    recognitionConstructor,
-    lang,
-    clearSilenceTimer,
-    resetSilenceTimer,
-    stopAudioAnalysis,
-    startAudioAnalysis,
-    updateSegments,
-  ]);
+  }, [lang, onTranscriptChange, resetSilenceTimer, startAudioAnalysis, stopAudioAnalysis, clearSilenceTimer]);
 
-  useEffect(() => {
-    const normalized = normalizeSpacing(initialTranscript);
-    if (isListeningRef.current) return;
-    if (normalized === transcriptRef.current) return;
-
-    transcriptRef.current = normalized;
-    finalTranscriptRef.current = normalized;
-    interimTranscriptRef.current = "";
-    baseTranscriptRef.current = normalized;
-    sessionCommittedRef.current = normalized;
-    setFinalTranscript(normalized);
+  const setTranscript = useCallback((value: string) => {
+    const clean = normalizeSpacing(value);
+    finalTranscriptRef.current = clean;
+    setFinalTranscript(clean);
     setInterimTranscript("");
-    setTranscriptState(normalized);
-  }, [initialTranscript]);
+  }, []);
 
-  useEffect(() => {
-    if (!onTranscriptChange) return;
-    onTranscriptChange(transcript);
-  }, [transcript, onTranscriptChange]);
+  const clearTranscript = useCallback(() => setTranscript(""), [setTranscript]);
 
   const startListening = useCallback(() => {
-    if (!recognitionRef.current) {
-      setError("Speech recognition is not supported in this browser.");
-      return;
-    }
-    if (isListeningRef.current) return;
-
-    setError(null);
-    baseTranscriptRef.current = finalTranscriptRef.current;
-    sessionCommittedRef.current = finalTranscriptRef.current;
-    updateSegments(finalTranscriptRef.current, "");
-
+    if (!recognitionRef.current || isListeningRef.current) return;
     try {
-      recognitionRef.current.lang = lang;
       recognitionRef.current.start();
     } catch {
-      setError("Unable to start voice input right now. Please try again.");
+      setError("Unable to start voice input.");
     }
-  }, [lang]);
+  }, []);
 
   const stopListening = useCallback(() => {
-    if (!recognitionRef.current) return;
-    if (!isListeningRef.current) {
-      stopAudioAnalysis();
-      return;
-    }
-
-    try {
-      recognitionRef.current.stop();
-    } catch {
-      // no-op
-    }
-    clearSilenceTimer();
+    recognitionRef.current?.stop();
     stopAudioAnalysis();
-  }, [clearSilenceTimer, stopAudioAnalysis]);
+  }, [stopAudioAnalysis]);
 
   const toggleListening = useCallback(() => {
-    if (isListeningRef.current) {
-      stopListening();
-    } else {
-      startListening();
-    }
+    isListeningRef.current ? stopListening() : startListening();
   }, [startListening, stopListening]);
 
-  const clearTranscript = useCallback(() => {
-    setTranscript("");
-    baseTranscriptRef.current = "";
-    sessionCommittedRef.current = "";
-  }, [setTranscript]);
-
   return {
-    isSupported,
+    isSupported: !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition),
     isListening,
     transcript,
     finalTranscript,

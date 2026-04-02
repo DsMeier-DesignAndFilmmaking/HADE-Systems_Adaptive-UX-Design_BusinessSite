@@ -1,15 +1,16 @@
 "use client";
 
-import React from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import React, { useMemo } from "react";
+import { AnimatePresence, motion, useAnimationFrame } from "framer-motion";
 import { Mic, Square, AlertTriangle, X } from "lucide-react";
 import { useSpeechToText } from "@/hooks/useSpeechToText";
 
 interface SenseVoiceInputProps {
   value: string;
-  onChange: (value: string) => void;
+  onChange: (v: string) => void;
   placeholder?: string;
   silenceDelayMs?: number;
+  isLive?: boolean; // Add this line to resolve TS(2322)
 }
 
 function ListeningBars({ active }: { active: boolean }) {
@@ -36,8 +37,9 @@ function ListeningBars({ active }: { active: boolean }) {
 export default function SenseVoiceInput({
   value,
   onChange,
-  placeholder = "Describe the vibe you want to feel...",
+  placeholder = "Describe the vibe...",
   silenceDelayMs = 2600,
+  isLive = false, // Destructure the new prop here
 }: SenseVoiceInputProps) {
   const {
     isSupported,
@@ -57,22 +59,32 @@ export default function SenseVoiceInput({
   });
 
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const keepCursorPinnedRef = React.useRef(false);
   const isPermissionError = error?.toLowerCase().includes("permission denied");
   const micScale = isListening ? 1 + Math.min(audioLevel, 1) * 0.35 : 1;
 
+  // CRITICAL FIX: Combine finalized text with interim "live" results for the textarea
+  const displayValue = useMemo(() => {
+    if (!isListening) return transcript;
+    return interimTranscript 
+      ? `${transcript}${transcript ? " " : ""}${interimTranscript}`
+      : transcript;
+  }, [transcript, interimTranscript, isListening]);
+
   React.useEffect(() => {
-    if (!isListening) return;
+    keepCursorPinnedRef.current = isListening;
+  }, [isListening]);
+
+  // Cursor follow behavior powered by framer-motion's animation loop.
+  useAnimationFrame(() => {
+    if (!keepCursorPinnedRef.current) return;
     const textarea = textareaRef.current;
     if (!textarea) return;
-
-    const cursorAtEnd = () => {
-      const end = textarea.value.length;
+    const end = textarea.value.length;
+    if (textarea.selectionStart !== end || textarea.selectionEnd !== end) {
       textarea.setSelectionRange(end, end);
-    };
-
-    const raf = window.requestAnimationFrame(cursorAtEnd);
-    return () => window.cancelAnimationFrame(raf);
-  }, [transcript, isListening]);
+    }
+  });
 
   return (
     <div className="rounded-3xl border border-white/10 bg-[#0F131B] p-4 shadow-[0_18px_40px_rgba(0,0,0,0.28)]">
@@ -139,7 +151,7 @@ export default function SenseVoiceInput({
         <div className="flex-1">
           <textarea
             ref={textareaRef}
-            value={transcript}
+            value={displayValue} // Binds to the combined live string
             onChange={(event) => setTranscript(event.target.value)}
             rows={3}
             placeholder={placeholder}
@@ -161,19 +173,6 @@ export default function SenseVoiceInput({
               </button>
             )}
           </div>
-          <AnimatePresence>
-            {isListening && interimTranscript && (
-              <motion.p
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 5 }}
-                transition={{ duration: 0.18 }}
-                className="mt-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/50"
-              >
-                Processing: {interimTranscript}
-              </motion.p>
-            )}
-          </AnimatePresence>
         </div>
       </div>
 
