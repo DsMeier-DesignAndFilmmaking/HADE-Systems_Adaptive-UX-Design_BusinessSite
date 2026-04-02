@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { MapPin, Plus, Camera, FileText, Mic2, X, Sparkles, Mic } from "lucide-react";
+import { MapPin, Plus, Camera, FileText, X, Sparkles, Mic } from "lucide-react";
 import { GoogleMap, OverlayView, useJsApiLoader } from "@react-google-maps/api";
 
 
@@ -83,48 +83,6 @@ interface HadeApiResponse {
 }
 
 /* --- UGC Field Notes --- */
-
-interface UGCPreset {
-  id: "photo" | "text" | "voice";
-  label: string;
-  sublabel: string;
-  description: string;
-  injectedSignal: string;
-  extractedTags: string[];
-}
-
-const UGC_PRESETS: UGCPreset[] = [
-  {
-    id: "photo",
-    label: "Photo",
-    sublabel: "Architectural Detail",
-    description: "A brutalist concrete facade captured off İstiklal — raw texture, diffused light.",
-    injectedSignal: "brutalist architecture concrete hidden interior space",
-    extractedTags: ["Vibe: Structural", "Type: Interior", "Texture: Raw Concrete", "Mood: Contemplative"],
-  },
-  {
-    id: "text",
-    label: "Text",
-    sublabel: "Field Note",
-    description: "Hidden high-fidelity listening bar nearby",
-    injectedSignal: "high-fidelity listening bar acoustic hidden local",
-    extractedTags: ["Vibe: Acoustic", "Type: Bar", "Ambience: Intimate", "Volume: Curated"],
-  },
-  {
-    id: "voice",
-    label: "Voice",
-    sublabel: "Context Probe",
-    description: "Searching for a quiet café-bar vibe",
-    injectedSignal: "quiet cafe-bar calm low-key ambient local",
-    extractedTags: ["Vibe: Calm", "Type: Café-Bar", "Energy: Low", "Context: Work-Adjacent"],
-  },
-];
-
-const UGC_ICONS: Record<UGCPreset["id"], React.ReactNode> = {
-  photo: <Camera size={15} />,
-  text: <FileText size={15} />,
-  voice: <Mic2 size={15} />,
-};
 
 const MODULE_THEMES: Record<ModuleContext, { 
   primary: string; 
@@ -1180,14 +1138,65 @@ function VibeCreationOverlay({
 
 /* --- 5. UGC Sub-Components --- */
 
-function UGCBottomSheet({ open, onClose, onSelect }: {
+function UGCBottomSheet({ open, onClose, onSubmit }: {
   open: boolean;
   onClose: () => void;
-  onSelect: (preset: UGCPreset) => void;
+  onSubmit: (signal: string) => void;
 }) {
-  const [mounted, setMounted] = React.useState(false);
+  const [mounted, setMounted]           = React.useState(false);
+  const [inputText, setInputText]       = React.useState("");
+  const [photoAttached, setPhotoAttached] = React.useState(false);
+  const [submitted, setSubmitted]       = React.useState(false);
+  const textareaRef                     = React.useRef<HTMLTextAreaElement>(null);
+
   React.useEffect(() => { setMounted(true); }, []);
+
+  /* Auto-focus textarea when sheet opens; reset state when it closes */
+  React.useEffect(() => {
+    if (open) {
+      const t = setTimeout(() => textareaRef.current?.focus(), 380);
+      return () => clearTimeout(t);
+    } else {
+      /* Delay reset until exit animation finishes */
+      const t = setTimeout(() => {
+        setInputText("");
+        setPhotoAttached(false);
+        setSubmitted(false);
+      }, 400);
+      return () => clearTimeout(t);
+    }
+  }, [open]);
+
+  /* Auto-resize textarea */
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputText(e.target.value);
+    const el = e.target;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 144) + "px";
+  };
+
+  const canSend = inputText.trim().length > 0 || photoAttached;
+
+  const handleSend = () => {
+    if (!canSend) return;
+    const parts = [
+      photoAttached ? "photo signal captured" : "",
+      inputText.trim(),
+    ].filter(Boolean);
+    onSubmit(parts.join(" — "));
+    setSubmitted(true);
+    setTimeout(() => onClose(), 1400);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
   if (!mounted || !document.body) return null;
+
   return createPortal(
     <AnimatePresence>
       {open && (
@@ -1198,9 +1207,9 @@ function UGCBottomSheet({ open, onClose, onSelect }: {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
+            transition={{ duration: 0.22 }}
             onClick={onClose}
-            className="fixed inset-0 z-40 bg-ink/40 backdrop-blur-sm"
+            className="fixed inset-0 z-40 bg-ink/30 backdrop-blur-sm"
           />
 
           {/* Sheet */}
@@ -1209,152 +1218,177 @@ function UGCBottomSheet({ open, onClose, onSelect }: {
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
-            transition={{ type: "spring", stiffness: 340, damping: 38 }}
-            className="fixed bottom-0 left-0 right-0 z-50 max-h-[90vh] overflow-y-auto rounded-t-[2.5rem] border-t border-white/60 bg-white/85 px-6 pb-10 pt-5 shadow-2xl backdrop-blur-3xl"
+            transition={{ type: "spring", stiffness: 320, damping: 36 }}
+            className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[2.25rem] border-t border-white/50 bg-white/92 shadow-2xl backdrop-blur-3xl"
           >
-            {/* Handle */}
-            <div className="mx-auto mb-7 h-1 w-12 rounded-full bg-ink/15" />
+            {/* Drag handle */}
+            <div className="mx-auto mt-3.5 h-[3px] w-9 rounded-full bg-ink/15" />
 
             {/* Header */}
-            <div className="mb-7 flex items-start justify-between">
+            <div className="flex items-center justify-between px-6 pb-3 pt-4">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-ink/35">Capture Context</p>
+                <p className="text-[9px] font-black uppercase tracking-[0.26em] text-ink/30">
+                  Capture Context
+                </p>
                 <h2
-                  className="mt-1 text-2xl font-normal tracking-tight text-ink"
-                  style={{ fontFamily: 'Georgia, serif' }}
+                  className="mt-0.5 text-[1.25rem] font-normal tracking-tight text-ink"
+                  style={{ fontFamily: "Georgia, serif" }}
                 >
                   Field Notes
                 </h2>
-                <p className="mt-1 text-sm text-ink/45 leading-relaxed">
-                  Inject a live signal into the HADE engine — the sense map recalibrates instantly.
-                </p>
               </div>
               <button
                 onClick={onClose}
-                className="ml-4 mt-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-ink/5 hover:bg-ink/10 transition"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-ink/[0.06] transition hover:bg-ink/[0.12]"
               >
-                <X size={14} className="text-ink/50" />
+                <X size={13} className="text-ink/45" />
               </button>
             </div>
 
-            {/* Preset Cards */}
-            <div className="grid grid-cols-1 gap-3">
-              {UGC_PRESETS.map((preset) => (
-                <button
-                  key={preset.id}
-                  onClick={() => onSelect(preset)}
-                  className="group w-full rounded-2xl border border-ink/[0.07] bg-white/60 p-5 text-left transition-all hover:bg-ink/[0.03] hover:border-ink/[0.14] active:scale-[0.99]"
-                >
-                  <div className="flex items-start gap-4">
-                    {/* Icon pill */}
-                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-ink/[0.05] text-ink/50 group-hover:bg-ink/[0.09] transition">
-                      {UGC_ICONS[preset.id]}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-[10px] font-black uppercase tracking-[0.18em] text-ink/40">{preset.label}</span>
-                        <span
-                          className="text-sm font-normal text-ink/70"
-                          style={{ fontFamily: 'Georgia, serif' }}
-                        >
-                          {preset.sublabel}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-sm leading-relaxed text-ink/55">{preset.description}</p>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
+            {/* Divider */}
+            <div className="mx-5 h-px bg-ink/[0.07]" />
 
-            <p className="mt-6 text-center text-[9px] font-bold uppercase tracking-[0.2em] text-ink/20">
-              Context Orchestration  ·  Agentic Discovery Stack
-            </p>
+            {/* Body */}
+            <div className="px-5 pb-8 pt-5">
+              <AnimatePresence mode="wait">
+
+                {/* ── Submitted confirmation ── */}
+                {submitted ? (
+                  <motion.div
+                    key="ugc-confirmed"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.26 }}
+                    className="flex flex-col items-center gap-3 py-9"
+                  >
+                    <motion.div
+                      initial={{ scale: 0.6, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ type: "spring", stiffness: 420, damping: 20, delay: 0.05 }}
+                      className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10"
+                    >
+                      <Sparkles size={20} className="text-emerald-500" />
+                    </motion.div>
+                    <p
+                      className="text-base font-normal text-ink"
+                      style={{ fontFamily: "Georgia, serif" }}
+                    >
+                      Signal Absorbed
+                    </p>
+                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-ink/28">
+                      Context Orchestration Active
+                    </p>
+                  </motion.div>
+
+                ) : (
+
+                  /* ── Input state ── */
+                  <motion.div
+                    key="ugc-input"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.18 }}
+                  >
+
+                    {/* Photo attachment pill */}
+                    <AnimatePresence>
+                      {photoAttached && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 6, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 4, scale: 0.95 }}
+                          transition={{ duration: 0.2 }}
+                          className="mb-3"
+                        >
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 bg-ink/[0.05] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-ink/55">
+                            <Camera size={10} className="text-ink/40" />
+                            Photo Attached
+                            <button
+                              onClick={() => setPhotoAttached(false)}
+                              className="ml-0.5 text-ink/30 transition hover:text-ink/70"
+                            >
+                              <X size={9} />
+                            </button>
+                          </span>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* ── Input card — ChatGPT / Claude style ── */}
+                    <div className="rounded-[1.6rem] border border-ink/[0.09] bg-white/75 px-4 pb-2.5 pt-4 shadow-sm backdrop-blur-md">
+
+                      {/* Textarea */}
+                      <textarea
+                        ref={textareaRef}
+                        value={inputText}
+                        onChange={handleInput}
+                        onKeyDown={handleKeyDown}
+                        rows={2}
+                        placeholder="Describe the vibe, a context signal, or what you are searching for..."
+                        className="w-full resize-none bg-transparent text-[15px] leading-relaxed text-ink outline-none placeholder:text-ink/28"
+                        style={{ minHeight: "54px", maxHeight: "144px" }}
+                      />
+
+                      {/* Bottom action row */}
+                      <div className="flex items-center justify-between pt-1 pb-0.5">
+
+                        {/* Secondary — camera + mic */}
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            onClick={() => setPhotoAttached((v) => !v)}
+                            title="Attach photo"
+                            className={`flex h-8 w-8 items-center justify-center rounded-full transition
+                              ${photoAttached
+                                ? "bg-ink/[0.08] text-ink/70"
+                                : "text-ink/32 hover:bg-ink/[0.05] hover:text-ink/55"
+                              }`}
+                          >
+                            <Camera size={15} />
+                          </button>
+                          <button
+                            title="Voice input"
+                            className="flex h-8 w-8 items-center justify-center rounded-full text-ink/32 transition hover:bg-ink/[0.05] hover:text-ink/55"
+                          >
+                            <Mic size={15} />
+                          </button>
+                        </div>
+
+                        {/* Send button — springs in when input exists */}
+                        <AnimatePresence>
+                          {canSend && (
+                            <motion.button
+                              key="ugc-send"
+                              initial={{ scale: 0.4, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              exit={{ scale: 0.4, opacity: 0 }}
+                              transition={{ type: "spring", stiffness: 460, damping: 22 }}
+                              onClick={handleSend}
+                              className="flex h-8 w-8 items-center justify-center rounded-full bg-ink shadow-sm transition-colors hover:bg-ink/80"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M6 10.5V1.5M6 1.5L2 5.5M6 1.5L10 5.5" stroke="white" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            </motion.button>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+
+                    {/* Hint */}
+                    <p className="mt-3 text-center text-[8.5px] font-bold uppercase tracking-[0.2em] text-ink/18">
+                      {navigator?.platform?.includes("Mac") ? "⌘ Return to send" : "Ctrl + Return to send"}
+                      {" · "}Context Orchestration
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </motion.div>
         </>
       )}
     </AnimatePresence>,
-    document.body
-  );
-}
-
-function UGCProcessingOverlay({ preset }: { preset: UGCPreset }) {
-  const [mounted, setMounted] = React.useState(false);
-  React.useEffect(() => { setMounted(true); }, []);
-  if (!mounted || !document.body) return null;
-  return createPortal(
-    <motion.div
-      key="ugc-overlay"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.25 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/55 backdrop-blur-md px-6"
-    >
-      <motion.div
-        initial={{ scale: 0.96, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.96, opacity: 0 }}
-        transition={{ duration: 0.3, ease: [0.19, 1, 0.22, 1] }}
-        className="w-full max-w-sm rounded-[2.5rem] bg-white/92 p-10 shadow-2xl backdrop-blur-2xl"
-      >
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <motion.div
-            animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
-            transition={{ repeat: Infinity, duration: 1.6 }}
-            className="h-2 w-2 rounded-full bg-emerald-500"
-          />
-          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-ink/40">Sense Mapping</p>
-        </div>
-
-        <h3
-          className="text-2xl font-normal tracking-tight text-ink mb-3"
-          style={{ fontFamily: 'Georgia, serif' }}
-        >
-          Parsing Field Note
-        </h3>
-
-        {/* Input description with scanning underline */}
-        <div className="relative mb-8 overflow-hidden rounded-xl bg-ink/[0.03] px-4 py-3">
-          <p className="text-sm italic text-ink/60 leading-relaxed">"{preset.description}"</p>
-          <motion.div
-            initial={{ x: "-100%" }}
-            animate={{ x: "100%" }}
-            transition={{ duration: 1.4, ease: "easeInOut", repeat: 1, repeatDelay: 0.2 }}
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-400/20 to-transparent"
-          />
-        </div>
-
-        {/* Extracted tags — staggered appearance */}
-        <div className="space-y-2">
-          <p className="text-[9px] font-black uppercase tracking-[0.22em] text-ink/30 mb-3">Context Signals Extracted</p>
-          <div className="flex flex-wrap gap-2">
-            {preset.extractedTags.map((tag, i) => (
-              <motion.span
-                key={tag}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.55 + i * 0.14, duration: 0.35, ease: "easeOut" }}
-                className="rounded-full border border-ink/10 bg-ink/[0.04] px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-ink/60"
-              >
-                {tag}
-              </motion.span>
-            ))}
-          </div>
-        </div>
-
-        {/* Closing copy */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.9, duration: 0.4 }}
-          className="mt-7 text-[9px] font-bold uppercase tracking-[0.2em] text-ink/25"
-        >
-          Context Orchestration Complete
-        </motion.p>
-      </motion.div>
-    </motion.div>,
     document.body
   );
 }
@@ -1373,9 +1407,8 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
 
   // UGC Field Notes state
   const [ugcSheetOpen, setUgcSheetOpen] = useState(false);
-  const [ugcProcessingPreset, setUgcProcessingPreset] = useState<UGCPreset | null>(null);
-  const [ugcInjected, setUgcInjected] = useState<UGCPreset | null>(null);
-  const [resultPulse, setResultPulse] = useState(false);
+  const [ugcInjected, setUgcInjected]   = useState(false);
+  const [resultPulse, setResultPulse]   = useState(false);
 
   // Vibe Creator state — fully isolated from step machine
   const [vibeMode, setVibeMode] = useState<VibeMode>("idle");
@@ -1393,31 +1426,20 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
     }
   }, [step]);
 
-  // UGC Context Injection — isolated handler, does not touch existing step-machine logic
-  const handleUGCInjection = useCallback((preset: UGCPreset) => {
-    setUgcSheetOpen(false);
-    setUgcProcessingPreset(preset); // triggers UGCProcessingOverlay
+  // UGC Context Injection — called directly from the Field Notes sheet on submit
+  const handleUGCSubmit = useCallback((newSignal: string) => {
+    setSignal((prev) => ({
+      ...prev,
+      combinedSignal: prev.combinedSignal.trim()
+        ? `${prev.combinedSignal} — ${newSignal}`
+        : newSignal,
+    }));
+    setUgcInjected(true);
 
-    // After 2400ms sense-mapping animation, inject context into engine state
-    setTimeout(() => {
-      setSignal((prev) => ({
-        ...prev,
-        combinedSignal: prev.combinedSignal.trim()
-          ? `${prev.combinedSignal} — ${preset.injectedSignal}`
-          : preset.injectedSignal,
-      }));
-      setUgcInjected(preset);
-      setUgcProcessingPreset(null);
-
-      // Pulse the result/map card if already on those steps
-      setResultPulse((prev) => {
-        if (step === "result" || step === "mapping") {
-          setTimeout(() => setResultPulse(false), 900);
-          return true;
-        }
-        return prev;
-      });
-    }, 2400);
+    if (step === "result" || step === "mapping") {
+      setResultPulse(true);
+      setTimeout(() => setResultPulse(false), 900);
+    }
   }, [step]);
 
   // Vibe Creator handler — isolated from all Discovery step-machine state
@@ -1655,11 +1677,6 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
         </motion.div>
       </AnimatePresence>
 
-      {/* UGC overlays — rendered outside step AnimatePresence so they float above all steps */}
-      <AnimatePresence>
-        {ugcProcessingPreset && <UGCProcessingOverlay preset={ugcProcessingPreset} />}
-      </AnimatePresence>
-
       {/* Vibe Creator overlay — isolated Vibe state machine, never touches StepId */}
       <VibeCreationOverlay
         vibeMode={vibeMode}
@@ -1674,7 +1691,7 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
       <UGCBottomSheet
         open={ugcSheetOpen}
         onClose={() => setUgcSheetOpen(false)}
-        onSelect={handleUGCInjection}
+        onSubmit={handleUGCSubmit}
       />
 
       <div className="mt-12 flex justify-center gap-3">
