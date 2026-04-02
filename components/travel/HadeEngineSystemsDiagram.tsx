@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { MapPin, Plus, Camera, FileText, X, Sparkles, Mic } from "lucide-react";
 import { GoogleMap, OverlayView, useJsApiLoader } from "@react-google-maps/api";
+import SenseVoiceInput from "./SenseVoiceInput";
 
 
 /* --- Modern Organic Palette (Vibe Creator) --- */
@@ -206,7 +207,7 @@ const LLM_OPTIONS: Array<{ id: LlmChoice; label: string; detail: string }> = [
 
 const VIBE_CHIPS_DEFAULT = ["City Park", "High Energy", "Live Event", "Outdoor"] as const;
 
-const SAMPLE_VIBE_TEXT = "Volleyball game happening at City Park, high energy.";
+const SAMPLE_VIBE_TEXT = "";
 
 /**
  * surfaceUGCContext
@@ -225,55 +226,109 @@ function surfaceUGCContext(
 
 /* --- 3. UI Sub-Components --- */
 
-function EngineSettings({ signal, setSignal }: any) {
-  return (
-    <div className="mt-6 rounded-2xl border border-ink/10 bg-white/70 p-3">
-      <p className="mb-2 px-2 text-[10px] font-black uppercase tracking-[0.2em] text-ink/40">
-        Neural Backbone
-      </p>
-      <div className="grid grid-cols-3 gap-2">
-        {LLM_OPTIONS.map((option) => {
-          const active = signal.llmChoice === option.id;
-          return (
-            <button
-              key={option.id}
-              onClick={() =>
-                setSignal((p: SignalState) => ({ ...p, llmChoice: option.id }))
-              }
-              className="relative overflow-hidden rounded-xl border border-ink/10 px-3 py-3 text-left"
-            >
-              {active && (
-                <motion.div
-                  layoutId="active-pill"
-                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                  className="absolute inset-0 rounded-xl bg-ink text-white"
-                />
-              )}
-              <div className="relative z-10">
-                <p
-                  className={`text-[11px] font-black uppercase tracking-widest ${
-                    active ? "text-white" : "text-ink/70"
-                  }`}
-                >
-                  {option.label}
+function NeuralBackboneSheet({ open, onClose, llmChoice, onSelect }: {
+  open: boolean;
+  onClose: () => void;
+  llmChoice: LlmChoice;
+  onSelect: (id: LlmChoice) => void;
+}) {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => { setMounted(true); }, []);
+  if (!mounted || !document.body) return null;
+
+  return createPortal(
+    <AnimatePresence>
+      {open && (
+        <>
+          {/* Scrim */}
+          <motion.div
+            key="backbone-scrim"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.22 }}
+            onClick={onClose}
+            className="fixed inset-0 z-40 bg-ink/30 backdrop-blur-sm"
+          />
+
+          {/* Sheet */}
+          <motion.div
+            key="backbone-sheet"
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", stiffness: 320, damping: 36 }}
+            className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[2.25rem] border-t border-white/50 bg-white/92 shadow-2xl backdrop-blur-3xl"
+          >
+            {/* Drag handle */}
+            <div className="mx-auto mt-3.5 h-[3px] w-9 rounded-full bg-ink/15" />
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 pb-3 pt-4">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[0.26em] text-ink/30">
+                  Engine Configuration
                 </p>
-                <p
-                  className={`mt-1 text-[9px] font-bold uppercase tracking-[0.14em] ${
-                    active ? "text-white/60" : "text-ink/30"
-                  }`}
+                <h2
+                  className="mt-0.5 text-[1.25rem] font-normal tracking-tight text-ink"
+                  style={{ fontFamily: "Georgia, serif" }}
                 >
-                  {option.detail}
-                </p>
+                  Neural Backbone
+                </h2>
               </div>
-            </button>
-          );
-        })}
-      </div>
-    </div>
+              <button
+                onClick={onClose}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-ink/[0.06] transition hover:bg-ink/[0.12]"
+              >
+                <X size={13} className="text-ink/45" />
+              </button>
+            </div>
+
+            {/* Divider */}
+            <div className="mx-5 h-px bg-ink/[0.07]" />
+
+            {/* Options */}
+            <div className="flex flex-col gap-2.5 px-5 py-5 pb-8">
+              {LLM_OPTIONS.map((option) => {
+                const active = llmChoice === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    onClick={() => { onSelect(option.id); onClose(); }}
+                    className="relative flex items-center justify-between overflow-hidden rounded-2xl border border-ink/[0.08] px-5 py-4 text-left transition-all hover:border-ink/[0.18] active:scale-[0.99]"
+                    style={{ background: active ? "#1C1C1E" : "rgba(255,255,255,0.65)" }}
+                  >
+                    {active && (
+                      <motion.div
+                        layoutId="backbone-active-pill"
+                        className="absolute inset-0 rounded-2xl bg-ink"
+                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                      />
+                    )}
+                    <div className="relative z-10">
+                      <p className={`text-[13px] font-black uppercase tracking-widest ${active ? "text-white" : "text-ink/75"}`}>
+                        {option.label}
+                      </p>
+                      <p className={`mt-0.5 text-[10px] font-bold uppercase tracking-[0.14em] ${active ? "text-white/50" : "text-ink/30"}`}>
+                        {option.detail}
+                      </p>
+                    </div>
+                    {active && (
+                      <div className="relative z-10 h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>,
+    document.body
   );
 }
 
-function UnifiedInputStep({ signal, setSignal, onNext, isLoading, onCaptureContext, onCreateVibe, surfacedVibe }: any) {
+function UnifiedInputStep({ signal, setSignal, onNext, isLoading, onCaptureContext, onCreateVibe, onOpenBackbone, surfacedVibe }: any) {
   const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
   const hasSignalInput = signal.combinedSignal.trim().length > 0;
   return (
@@ -290,8 +345,8 @@ function UnifiedInputStep({ signal, setSignal, onNext, isLoading, onCaptureConte
             className="flex items-center gap-2 rounded-full px-4 py-2 transition-all hover:scale-[1.03]"
             style={{ background: ORGANIC.cream, border: `1px solid ${ORGANIC.warmLine}` }}
           >
-            <Sparkles size={12} style={{ color: ORGANIC.sage }} />
-            <span className="text-[10px] font-black uppercase tracking-[0.16em]" style={{ color: ORGANIC.sage }}>
+            <Sparkles size={12} style={{ color: ORGANIC.charcoal }} />
+            <span className="text-[10px] font-black uppercase tracking-[0.16em]" style={{ color: ORGANIC.charcoal }}>
               Create a Vibe
             </span>
           </button>
@@ -372,7 +427,6 @@ function UnifiedInputStep({ signal, setSignal, onNext, isLoading, onCaptureConte
           </div>
         </div>
 
-        <EngineSettings signal={signal} setSignal={setSignal} />
       </div>
       <div className="mt-8 flex items-center justify-between gap-4">
         {/* Left affordances */}
@@ -383,6 +437,15 @@ function UnifiedInputStep({ signal, setSignal, onNext, isLoading, onCaptureConte
           >
             <Plus size={13} className="text-ink/40" />
             <span className="text-[10px] font-black uppercase tracking-[0.18em] text-ink/40">Field Notes</span>
+          </button>
+          <button
+            onClick={onOpenBackbone}
+            className="flex items-center gap-2 rounded-full border border-ink/10 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-sm transition-all hover:scale-[1.02] hover:border-ink/20"
+          >
+            <div className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-ink/40">
+              {LLM_OPTIONS.find((o) => o.id === signal.llmChoice)?.label ?? "Model"}
+            </span>
           </button>
         </div>
 
@@ -802,61 +865,6 @@ function TacticalMapStep({ signal, generatedOutput, onRestart, resultPulse, ugcI
 
 /* --- 4. Vibe Creator Sub-Components --- */
 
-function VoiceVisualizer() {
-  const rings = [
-    { scale: 1.0, maxScale: 1.45, opacity: 0.30, delay: 0 },
-    { scale: 1.0, maxScale: 1.85, opacity: 0.18, delay: 0.45 },
-    { scale: 1.0, maxScale: 2.30, opacity: 0.09, delay: 0.90 },
-  ];
-  const barHeights = [0.45, 0.70, 1.0, 0.80, 0.55, 0.90, 0.50, 0.75, 1.0, 0.65];
-
-  return (
-    <div className="flex flex-col items-center gap-6 py-4">
-      {/* Pulsing concentric rings */}
-      <div className="relative flex h-28 w-28 items-center justify-center">
-        {rings.map((ring, i) => (
-          <motion.div
-            key={i}
-            className="absolute rounded-full"
-            style={{ width: 112, height: 112, border: `1.5px solid ${ORGANIC.sage}` }}
-            animate={{ scale: [ring.scale, ring.maxScale], opacity: [ring.opacity, 0] }}
-            transition={{ repeat: Infinity, duration: 2.4, delay: ring.delay, ease: "easeOut" }}
-          />
-        ))}
-        {/* Centre mic button */}
-        <motion.div
-          className="relative z-10 flex h-14 w-14 items-center justify-center rounded-full"
-          style={{ background: ORGANIC.charcoal, boxShadow: `0 8px 28px ${ORGANIC.sageMid}` }}
-          animate={{ scale: [1, 1.04, 1] }}
-          transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut" }}
-        >
-          <Mic size={20} color={ORGANIC.warmWhite} strokeWidth={1.5} />
-        </motion.div>
-      </div>
-
-      {/* Waveform bars */}
-      <div className="flex items-end gap-1.5" style={{ height: 28 }}>
-        {barHeights.map((h, i) => (
-          <motion.div
-            key={i}
-            className="w-1.5 rounded-full origin-bottom"
-            style={{ height: 28 * h, background: ORGANIC.sage }}
-            animate={{ scaleY: [h, Math.min(h + 0.35, 1), h] }}
-            transition={{ repeat: Infinity, duration: 0.9 + i * 0.04, delay: i * 0.07, ease: "easeInOut" }}
-          />
-        ))}
-      </div>
-
-      <p
-        className="text-[10px] font-black uppercase tracking-[0.24em]"
-        style={{ color: ORGANIC.sage }}
-      >
-        Listening
-      </p>
-    </div>
-  );
-}
-
 function DocumentingAnimation({ rawText, chips }: { rawText: string; chips: readonly string[] }) {
   return (
     <div className="py-2">
@@ -1066,24 +1074,12 @@ function VibeCreationOverlay({
 
                     {/* Voice tab */}
                     {activeTab === "voice" && (
-                      <div className="flex flex-col gap-5">
-                        <VoiceVisualizer />
-                        {/* Signal preview */}
-                        <div
-                          className="rounded-2xl px-5 py-4 text-center"
-                          style={{ background: ORGANIC.cream, border: `1px solid ${ORGANIC.warmLine}` }}
-                        >
-                          <p className="mb-1 text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: ORGANIC.sage }}>
-                            Signal Preview
-                          </p>
-                          <p
-                            className="text-sm italic leading-relaxed"
-                            style={{ color: ORGANIC.charcoal, fontFamily: 'Georgia, serif' }}
-                          >
-                            "{rawText}"
-                          </p>
-                        </div>
-                      </div>
+                      <SenseVoiceInput
+                        value={rawText}
+                        onChange={setRawText}
+                        placeholder="A moody rainy night in Tokyo..."
+                        silenceDelayMs={2600}
+                      />
                     )}
 
                     {/* Text tab */}
@@ -1093,6 +1089,7 @@ function VibeCreationOverlay({
                           value={rawText}
                           onChange={(e) => setRawText(e.target.value)}
                           rows={4}
+                          placeholder="What do you want to share...?"
                           className="w-full resize-none rounded-2xl px-5 py-4 text-base outline-none"
                           style={{
                             background: ORGANIC.cream,
@@ -1405,8 +1402,12 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
   const [apiError, setApiError] = useState<string | null>(null);
   const exploreStartRef = useRef<number>(0);
 
+  // Neural Backbone sheet
+  const [backboneSheetOpen, setBackboneSheetOpen] = useState(false);
+
   // UGC Field Notes state
   const [ugcSheetOpen, setUgcSheetOpen] = useState(false);
+  const [ugcSignal, setUgcSignal]       = useState("");   // stored separately — never written to the textarea
   const [ugcInjected, setUgcInjected]   = useState(false);
   const [resultPulse, setResultPulse]   = useState(false);
 
@@ -1426,14 +1427,9 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
     }
   }, [step]);
 
-  // UGC Context Injection — called directly from the Field Notes sheet on submit
+  // UGC Context Injection — stores field note separately, never touches the visible textarea
   const handleUGCSubmit = useCallback((newSignal: string) => {
-    setSignal((prev) => ({
-      ...prev,
-      combinedSignal: prev.combinedSignal.trim()
-        ? `${prev.combinedSignal} — ${newSignal}`
-        : newSignal,
-    }));
+    setUgcSignal((prev) => prev.trim() ? `${prev} — ${newSignal}` : newSignal);
     setUgcInjected(true);
 
     if (step === "result" || step === "mapping") {
@@ -1535,8 +1531,13 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
     setStep("processing");
 
     try {
+      const combinedForRequest = [signal.combinedSignal, ugcSignal]
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .join(" — ");
+
       const requestPayload = {
-        signal: signal.combinedSignal,
+        signal: combinedForRequest,
         module: signal.moduleContext,
         location: signal.location,
         llmChoice: signal.llmChoice,
@@ -1600,7 +1601,8 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
     setDataReady(false);
     setIsLoading(false);
     setApiError(null);
-    setUgcInjected(null);
+    setUgcSignal("");
+    setUgcInjected(false);
     setResultPulse(false);
     setVibeMode("idle");
     // storedVibes intentionally preserved — vibes persist across restarts
@@ -1651,6 +1653,7 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
               isLoading={isLoading}
               onCaptureContext={() => setUgcSheetOpen(true)}
               onCreateVibe={() => { setVibeMode("sense"); setVibeActiveTab("voice"); }}
+              onOpenBackbone={() => setBackboneSheetOpen(true)}
               surfacedVibe={surfacedVibe}
             />
           )}
@@ -1692,6 +1695,13 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
         open={ugcSheetOpen}
         onClose={() => setUgcSheetOpen(false)}
         onSubmit={handleUGCSubmit}
+      />
+
+      <NeuralBackboneSheet
+        open={backboneSheetOpen}
+        onClose={() => setBackboneSheetOpen(false)}
+        llmChoice={signal.llmChoice}
+        onSelect={(id) => setSignal((p: SignalState) => ({ ...p, llmChoice: id }))}
       />
 
       <div className="mt-12 flex justify-center gap-3">
