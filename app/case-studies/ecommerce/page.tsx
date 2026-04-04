@@ -7,14 +7,65 @@ import PrincipleBlock from "@/components/travel/PrincipleBlock";
 import SystemGrid from "@/components/travel/SystemGrid";
 import BuildFocusList from "@/components/travel/BuildFocusList";
 import HadeEcommerceEngine from "@/components/ecommerce/HadeEcommerceEngine";
+import IntentStack from "@/components/ecommerce/IntentStack";
+import BusinessImpact from "@/components/ecommerce/BusinessImpact";
+import ProductionReadiness from "@/components/travel/ProductionReadiness";
+import type { ChecklistItem, RoadmapStep } from "@/components/travel/ProductionReadiness";
 
 export const metadata: Metadata = {
   title: "Adaptive Purchase Decision Engine | HADE Systems",
   description:
-    "A decision system that reads how a user is shopping in real time — detecting state, ranking options, and restructuring the catalog to match.",
+    "An infrastructure-level decision layer designed to recover mid-funnel drop-off. By classifying shopper intent in real-time, the system dynamically restructures PLG (Product-Led Growth) catalogs to reduce choice fatigue and accelerate the path to checkout.",
 };
 
 const ACCENT = "#316BFF";
+
+const ECOMMERCE_CHECKLIST: ChecklistItem[] = [
+  { status: "validated", label: "UX & Interaction Models — Behavioral capture, decision engine, adaptive catalog flows" },
+  { status: "validated", label: "Signal Architecture & Mapping — Intent Stack schema, behavioral telemetry event model" },
+  { status: "validated", label: "Edge Middleware Re-ordering Logic — Next.js edge intercept, payload optimization spec" },
+  { status: "validated", label: "Intent Score Formula — Weighted normalization across 8-signal behavioral matrix" },
+  { status: "in-progress", label: "HADE Scoring Microservice — Node.js/Python session scoring endpoint" },
+  { status: "in-progress", label: "Real-time Segment/RudderStack Integration — Client-side event stream connection" },
+  { status: "in-progress", label: "LaunchDarkly A/B Test Configuration — Flag setup, cohort targeting, metric binding" },
+  { status: "planned", label: "Production Load Testing — Scoring throughput under peak catalog traffic" },
+];
+
+const ECOMMERCE_ROADMAP: RoadmapStep[] = [
+  {
+    index: "01",
+    label: "Instrumentation",
+    detail:
+      "Deploy Segment or RudderStack SDK to emit structured events on back-navigation, price-filter interactions, cart add/remove deltas, and PDP dwell. Inject idempotency keys at the SDK layer to prevent duplicate scoring on network retry. All events carry session ID, product SKU context, and funnel-stage classification.",
+  },
+  {
+    index: "02",
+    label: "Scoring Endpoint",
+    detail:
+      "Stand up a Node.js middleware service on Vercel Edge or Cloudflare Workers. The service accepts the session event buffer, runs the HADE intent scoring model, and writes the scored payload to edge KV (Vercel KV or Cloudflare KV) within a 200ms SLA. The endpoint is stateless; session context is reconstructed from the ordered event buffer.",
+  },
+  {
+    index: "03",
+    label: "UI Triggers",
+    detail:
+      "Connect the HADE intent payload to a Next.js Edge Middleware intercept that re-orders the product array before SSR. No client-side reflow; catalog order is resolved at the edge before initial DOM paint. Product arrays are field-projected to ≤ 4KB before serialization to prevent TTFB degradation.",
+  },
+  {
+    index: "04",
+    label: "A/B Validation",
+    detail:
+      "Gate the adaptive catalog path behind a LaunchDarkly flag (50/50 split at edge). Primary metric: session conversion rate. Secondary: add-to-cart rate, time-to-cart median, return-to-search frequency. Run to p < 0.05 at 95% CI with a minimum of 4,200 sessions per cohort for adequate statistical power.",
+  },
+  {
+    index: "05",
+    label: "Threshold Iteration",
+    detail:
+      "Extract Intent Score distributions from the A/B treatment cohort. Recalibrate signal weights and the Evaluating-state detection threshold using observed conversion correlation data. Target: maximize precision of the high-intent re-ordering trigger while minimizing false-positive catalog mutations on low-intent sessions.",
+  },
+];
+
+const ECOMMERCE_SCALABILITY =
+  "Designed for headless commerce deployment via API-first architecture. The HADE scoring layer is fully decoupled from the storefront rendering layer, enabling integration with any Shopify, Commercetools, or custom Next.js stack via Edge Middleware or server-side product API. The intent model is independently versioned, rollback-safe, and multi-tenant capable. Edge-cached scoring payloads add zero latency to TTFB; catalog re-ordering occurs entirely within the existing SSR pipeline without frontend SDK changes.";
 
 const PROBLEMS = [
   {
@@ -87,6 +138,29 @@ const EXPERIENCE_MOMENTS = [
     label: "Decision → Conversion",
     detail:
       "Path to purchase narrows. No re-navigation, no restart. The interface has already cleared the way.",
+  },
+];
+
+const IMPLEMENTATION_PATH_ITEMS = [
+  {
+    label: "Event Ingestion",
+    detail:
+      "Real-time stream processing via Segment or RudderStack captures client-side telemetry, including dwell, comparison, revisit, and exit behavior.",
+  },
+  {
+    label: "Decisioning",
+    detail:
+      "A Node.js/Python middleware service scores active session data against the HADE intent model to produce state-aware ranking outputs.",
+  },
+  {
+    label: "Delivery",
+    detail:
+      "Edge-side execution with Next.js Middleware re-orders the JSON product response before initial paint, reducing visible decision latency.",
+  },
+  {
+    label: "Rollout",
+    detail:
+      "Deployment is gated behind a LaunchDarkly A/B feature flag to measure conversion lift against the static baseline before full release.",
   },
 ];
 
@@ -252,6 +326,13 @@ export default function Page() {
           </section>
         </Reveal>
 
+        {/* ── 5b. Technical Infrastructure & Signal Stack ───────────── */}
+        <Reveal delay={220}>
+          <section className="mb-12">
+            <IntentStack accent={ACCENT} />
+          </section>
+        </Reveal>
+
         {/* ── 6. Experience ─────────────────────────────────────────── */}
         <Reveal delay={240}>
           <section className="mb-12">
@@ -263,13 +344,61 @@ export default function Page() {
           </section>
         </Reveal>
 
-        {/* ── 7. Outcome ────────────────────────────────────────────── */}
+        {/* ── 7. Implementation Path ────────────────────────────────── */}
+        <Reveal delay={260}>
+          <section className="mb-12">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-4">
+              Implementation Path (Engineering Credibility)
+            </p>
+            <p className="text-md text-ink/55 leading-relaxed mb-5">
+              HADE is structured as a deployable system across ingestion, decisioning, edge delivery, and controlled experimentation in a modern production stack.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {IMPLEMENTATION_PATH_ITEMS.map(({ label, detail }) => (
+                <div
+                  key={label}
+                  className="rounded-xl p-5"
+                  style={{
+                    background: "rgba(11,13,18,0.03)",
+                    border: "1px solid rgba(11,13,18,0.08)",
+                  }}
+                >
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-ink/45 mb-2">
+                    {label}
+                  </p>
+                  <p className="text-sm text-ink/60 leading-relaxed">{detail}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </Reveal>
+
+        {/* ── 7b. Business Impact ───────────────────────────────────── */}
+        <Reveal delay={275}>
+          <section className="mb-12">
+            <BusinessImpact accent={ACCENT} />
+          </section>
+        </Reveal>
+
+        {/* ── 8. Outcome ────────────────────────────────────────────── */}
         <Reveal delay={280}>
           <section className="mb-16">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-4">
               Outcome
             </p>
             <SystemGrid items={OUTCOME_ITEMS} accent={ACCENT} />
+          </section>
+        </Reveal>
+
+        {/* ── From Prototype to Production ─────────────────────────── */}
+        <Reveal delay={310}>
+          <section className="mb-16">
+            <ProductionReadiness
+              accent={ACCENT}
+              checklist={ECOMMERCE_CHECKLIST}
+              roadmap={ECOMMERCE_ROADMAP}
+              scalabilityStatement={ECOMMERCE_SCALABILITY}
+            />
           </section>
         </Reveal>
 

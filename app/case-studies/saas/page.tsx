@@ -7,6 +7,9 @@ import PrincipleBlock from "@/components/travel/PrincipleBlock";
 import SystemGrid from "@/components/travel/SystemGrid";
 import BuildFocusList from "@/components/travel/BuildFocusList";
 import SaasActivationEngineClient from "@/components/saas/SaasActivationEngineClient";
+import CognitiveLoadArchitecture from "@/components/saas/CognitiveLoadArchitecture";
+import ProductionReadiness from "@/components/travel/ProductionReadiness";
+import type { ChecklistItem, RoadmapStep } from "@/components/travel/ProductionReadiness";
 
 export const metadata: Metadata = {
   title: "Adaptive Configuration Engine | HADE Systems",
@@ -15,6 +18,53 @@ export const metadata: Metadata = {
 };
 
 const ACCENT = "#2C7B76";
+
+const SAAS_CHECKLIST: ChecklistItem[] = [
+  { status: "validated", label: "UX & Interaction Models — Onboarding flow, friction state taxonomy, rescue layer design" },
+  { status: "validated", label: "Cognitive Load Signal Architecture — Four-signal telemetry schema, Friction Score formula" },
+  { status: "validated", label: "Abandonment Threshold Model — Four-band state machine (Configuring → Blocked)" },
+  { status: "validated", label: "Rescue Layer Command Set — Auto-Connect, template injection, guided mode escalation" },
+  { status: "in-progress", label: "HADE Scoring Microservice — Node.js Friction Score computation endpoint" },
+  { status: "in-progress", label: "Real-time WebSocket Integration — Session telemetry bridge to onboarding client" },
+  { status: "in-progress", label: "Rescue Trigger Automation — Event-driven intervention dispatch on threshold breach" },
+  { status: "planned", label: "Multi-tenant Isolation — Per-account scoring context, no cross-session data leakage" },
+];
+
+const SAAS_ROADMAP: RoadmapStep[] = [
+  {
+    index: "01",
+    label: "Instrumentation",
+    detail:
+      "Deploy low-level event listeners to the onboarding client to capture input volatility (edit/delete rate), field stall duration, context-switch events (tab focus/blur), and cursor velocity vectors. Emit structured events to the HADE ingestion endpoint with session ID, step-level context, and field complexity classification.",
+  },
+  {
+    index: "02",
+    label: "Scoring Endpoint",
+    detail:
+      "Stand up a Node.js Friction Score service. The endpoint accepts the session event buffer, applies the weighted signal normalization formula, and emits the current Friction Score and state classification (Configuring / Struggling / Blocked / Abandonment Imminent) in real time. Recompute target: ≤ 200ms end-to-end.",
+  },
+  {
+    index: "03",
+    label: "UI Triggers",
+    detail:
+      "Wire the HADE state output to the onboarding client's rescue layer via a lightweight React hook or SDK listener. State transitions above threshold dispatch the appropriate intervention: inline micro-assist, pre-fill template injection, guided mode modal, or human handoff escalation — in order of signal severity.",
+  },
+  {
+    index: "04",
+    label: "A/B Validation",
+    detail:
+      "Gate the HADE rescue layer behind a feature flag. Control cohort receives the standard onboarding flow; treatment cohort receives adaptive rescue interventions. Primary metric: onboarding completion rate. Secondary metrics: time-to-first-value, support ticket volume, activation-to-paid conversion rate.",
+  },
+  {
+    index: "05",
+    label: "Threshold Iteration",
+    detail:
+      "Analyze Friction Score distributions from completed and abandoned sessions in the treatment cohort. Recalibrate the Blocked state threshold (currently 56) and per-signal weight coefficients using observed abandonment correlation data. Objective: reduce false-positive intervention triggers without increasing undetected abandonment events.",
+  },
+];
+
+const SAAS_SCALABILITY =
+  "Designed for in-app SDK deployment with a minimal client footprint. The HADE rescue layer exposes a lightweight event-listener API compatible with any SaaS front-end framework — React, Vue, Angular, or vanilla JS. The Friction Score microservice is stateless and session-scoped, enabling multi-tenant deployment with per-account scoring isolation and no cross-session data leakage. The signal ingestion layer is framework-agnostic; existing analytics pipelines (Segment, Amplitude, Mixpanel) can serve as the event source without SDK replacement, lowering adoption cost for enterprise clients with established telemetry infrastructure.";
 
 const PROBLEMS = [
   {
@@ -90,6 +140,29 @@ const EXPERIENCE_MOMENTS = [
   },
 ];
 
+const IMPLEMENTATION_PATH_ITEMS = [
+  {
+    label: "Instrumentation",
+    detail:
+      "Low-overhead Mouse, Keyboard, and Focus listeners capture micro-interactions through Event Buffering with debounced streams and `requestIdleCallback`, preserving UI responsiveness while building a Friction Stream.",
+  },
+  {
+    label: "Orchestration",
+    detail:
+      "A lightweight Edge Function (Vercel Edge Function or AWS Lambda) processes buffered friction signals and returns a compact rescue payload optimized for minimal transfer and fast recovery decisions.",
+  },
+  {
+    label: "Trigger Hook: useHadeRescue()",
+    detail:
+      "Hook Abstraction standardizes rescue consumption across configuration surfaces: `const { command, payload } = useHadeRescue();`. Components subscribe once, then execute rescue commands such as `AUTO_FILL`, `SKIP_STEP`, or `INJECT_TEMPLATE` without custom wiring per flow.",
+  },
+  {
+    label: "Deployment Protocol",
+    detail:
+      "Segment or RudderStack forwards telemetry and rescue outcomes into LaunchDarkly experiment cohorts, enabling Payload Optimization and controlled A/B measurement between static-control and HADE-enabled variants.",
+  },
+];
+
 const OUTCOME_ITEMS = [
   {
     tag: "TTFV",
@@ -105,6 +178,40 @@ const OUTCOME_ITEMS = [
     tag: "Support",
     title: "Setup ticket volume drops",
     body: "When the system handles predictable configuration friction automatically, the questions that generate support tickets never arise. The rescue layer closes the loop before users escalate.",
+  },
+];
+
+const IMPACT_MODELING_METRICS = [
+  {
+    metric: "Onboarding Recovery",
+    modeled: "15-25% reduction in setup exits",
+    detail:
+      "Rescue intervention is triggered at hesitation clusters (idle + focus churn + docs tab-switching), intercepting abandonment intent before session termination.",
+  },
+  {
+    metric: "TTFV Acceleration",
+    modeled: "40% faster time-to-first-value",
+    detail:
+      "Auto-Connect triggers bypass manual 1:1 field mapping and schema handoff steps, compressing integration latency for first successful activation.",
+  },
+  {
+    metric: "Support Deflection",
+    modeled: "20% drop in integration-related tickets",
+    detail:
+      "Programmatic friction resolution reduces preventable setup failures, lowering support-assisted onboarding volume and associated servicing cost.",
+  },
+];
+
+const PERSONA_VALIDATION = [
+  {
+    flow: "Friction-Heavy Manual Flow (Non-Technical Operator)",
+    profile:
+      "User stalls on API credential and mapping requirements, context-switches to documentation, and exits before first successful connection.",
+  },
+  {
+    flow: "HADE-Augmented Rescue Flow",
+    profile:
+      "The same hesitation pattern triggers rescue commands that auto-fill predictable values, skip low-leverage mapping steps, and inject a guided template to complete activation in-session.",
   },
 ];
 
@@ -246,6 +353,7 @@ export default function Page() {
                 ))}
               </div>
             </div>
+            <CognitiveLoadArchitecture accent={ACCENT} />
             <div className="mt-6">
               <SaasActivationEngineClient />
             </div>
@@ -263,13 +371,111 @@ export default function Page() {
           </section>
         </Reveal>
 
-        {/* ── 7. Outcome ────────────────────────────────────────────── */}
+        {/* ── 7. Implementation Path ────────────────────────────────── */}
+        <Reveal delay={260}>
+          <section className="mb-12">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-4">
+              Implementation Path (Engineering Credibility)
+            </p>
+            <p className="text-md text-ink/55 leading-relaxed mb-5">
+              The HADE Behavioral Rescue layer deploys as a modern React/Next.js architecture with Event Buffering on the client, Edge Execution for real-time decisions, and Hook Abstraction for deterministic rescue delivery.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {IMPLEMENTATION_PATH_ITEMS.map(({ label, detail }) => (
+                <div
+                  key={label}
+                  className="rounded-xl p-5"
+                  style={{
+                    background: "rgba(11,13,18,0.03)",
+                    border: "1px solid rgba(11,13,18,0.08)",
+                  }}
+                >
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-ink/45 mb-2">
+                    {label}
+                  </p>
+                  <p className="text-sm text-ink/60 leading-relaxed">{detail}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </Reveal>
+
+        {/* ── 8. Outcome ────────────────────────────────────────────── */}
         <Reveal delay={280}>
-          <section className="mb-16">
+          <section className="mb-12">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-4">
               Result
             </p>
             <SystemGrid items={OUTCOME_ITEMS} accent={ACCENT} />
+          </section>
+        </Reveal>
+
+        {/* ── 9. Impact Modeling ───────────────────────────────────── */}
+        <Reveal delay={300}>
+          <section className="mb-16">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-4">
+              Impact Modeling &amp; ROI
+            </p>
+            <p className="text-md text-ink/55 leading-relaxed mb-5">
+              RevOps impact model: by converting micro-hesitation signals into rescue actions, the onboarding funnel recovers otherwise lost sessions, improves CAC efficiency, and increases paid activation yield without increasing acquisition spend.
+            </p>
+
+            <div className="rounded-xl p-5 mb-4" style={{ background: "rgba(11,13,18,0.03)", border: "1px solid rgba(11,13,18,0.08)" }}>
+              <p className="text-xs font-semibold tracking-[0.08em] uppercase text-ink/45 mb-4">
+                Modeled Performance Outcomes
+              </p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {IMPACT_MODELING_METRICS.map(({ metric, modeled, detail }) => (
+                  <div
+                    key={metric}
+                    className="rounded-lg p-4"
+                    style={{
+                      background: "rgba(255,255,255,0.65)",
+                      border: "1px solid rgba(11,13,18,0.08)",
+                    }}
+                  >
+                    <p className="text-xs text-ink/50 mb-2 leading-relaxed">{metric}</p>
+                    <p className="text-sm font-semibold text-ink mb-2">{modeled}</p>
+                    <p className="text-sm text-ink/60 leading-relaxed">{detail}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-xl p-5 mb-4" style={{ background: "rgba(11,13,18,0.03)", border: "1px solid rgba(11,13,18,0.08)" }}>
+              <p className="text-xs font-semibold tracking-[0.08em] uppercase text-ink/45 mb-4">
+                Causality Analysis
+              </p>
+              <p className="text-sm text-ink/60 leading-relaxed">
+                Signal-level causality chain: hesitation detection (idle bursts, focus churn, and documentation switching) increases rescue trigger precision; rescue precision increases successful step completion; step completion raises onboarding conversion and shortens activation windows. At the business layer, this shifts conversion forward in the funnel, reducing payback risk on CAC and improving expansion-qualified account volume.
+              </p>
+            </div>
+
+            <div className="rounded-xl p-5" style={{ background: "rgba(11,13,18,0.03)", border: "1px solid rgba(11,13,18,0.08)" }}>
+              <p className="text-xs font-semibold tracking-[0.08em] uppercase text-ink/45 mb-4">
+                Persona Validation (Non-Technical User)
+              </p>
+              <div className="space-y-3">
+                {PERSONA_VALIDATION.map(({ flow, profile }) => (
+                  <div key={flow} className="rounded-lg p-4" style={{ background: "rgba(255,255,255,0.65)", border: "1px solid rgba(11,13,18,0.08)" }}>
+                    <p className="text-sm font-semibold text-ink mb-1">{flow}</p>
+                    <p className="text-sm text-ink/60 leading-relaxed">{profile}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        </Reveal>
+
+        {/* ── From Prototype to Production ─────────────────────────── */}
+        <Reveal delay={310}>
+          <section className="mb-16">
+            <ProductionReadiness
+              accent={ACCENT}
+              checklist={SAAS_CHECKLIST}
+              roadmap={SAAS_ROADMAP}
+              scalabilityStatement={SAAS_SCALABILITY}
+            />
           </section>
         </Reveal>
 
