@@ -155,7 +155,7 @@ export default function ProductionReadiness({
                 >
                   {label}
                 </p>
-                <p className="text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.38)", fontFamily: "inherit" }}>
+                <p className="text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.62)", fontFamily: "inherit" }}>
                   {detail}
                 </p>
               </div>
