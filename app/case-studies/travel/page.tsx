@@ -9,6 +9,7 @@ import SystemGrid from "@/components/travel/SystemGrid";
 import BuildFocusList from "@/components/travel/BuildFocusList";
 import FutureProductCTA from "@/components/travel/FutureProductCTA";
 import HadeEngineSystemsDiagram from "@/components/travel/HadeEngineSystemsDiagram";
+import SignalArchitecture from "@/components/travel/SignalArchitecture";
 
 export const metadata: Metadata = {
   title: "Travel Packs | HADE Systems",
@@ -210,6 +211,7 @@ export default function Page() {
             </p>
             <SystemGrid items={SYSTEM_ITEMS} accent={ACCENT} />
             <div className="mt-6">
+              <SignalArchitecture accent={ACCENT} />
               <HadeEngineSystemsDiagram accent={ACCENT} />
             </div>
           </section>
