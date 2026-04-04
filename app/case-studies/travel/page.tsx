@@ -10,6 +10,8 @@ import BuildFocusList from "@/components/travel/BuildFocusList";
 import FutureProductCTA from "@/components/travel/FutureProductCTA";
 import HadeEngineSystemsDiagram from "@/components/travel/HadeEngineSystemsDiagram";
 import SignalArchitecture from "@/components/travel/SignalArchitecture";
+import ProductionReadiness from "@/components/travel/ProductionReadiness";
+import type { ChecklistItem, RoadmapStep } from "@/components/travel/ProductionReadiness";
 
 export const metadata: Metadata = {
   title: "Travel Packs | HADE Systems",
@@ -18,6 +20,53 @@ export const metadata: Metadata = {
 };
 
 const ACCENT = "#0891B2";
+
+const TRAVEL_CHECKLIST: ChecklistItem[] = [
+  { status: "validated", label: "UX & Interaction Models — Field Notes module system, adaptive panel flows" },
+  { status: "validated", label: "Signal Architecture & Mapping — Voice/NLP pipeline, geospatial intent schema" },
+  { status: "validated", label: "PWA Offline State Design — Service worker strategy, module context persistence" },
+  { status: "in-progress", label: "HADE Scoring Microservice — Node.js intent classification endpoint" },
+  { status: "in-progress", label: "Real-time API Integration — WebSocket session bridge to Field Notes client" },
+  { status: "in-progress", label: "Geospatial Velocity Engine — Movement state classifier (STATIONARY / WALKING / IN_TRANSIT)" },
+  { status: "planned", label: "Production Load Testing — Signal ingestion under concurrent session volume" },
+  { status: "planned", label: "Edge Deployment — Vercel Edge Function rollout for sub-100ms inference" },
+];
+
+const TRAVEL_ROADMAP: RoadmapStep[] = [
+  {
+    index: "01",
+    label: "Instrumentation",
+    detail:
+      "Deploy Segment SDK listeners for voice log events, GPS position fix events, dwell signals, and Field Notes module interaction events. Tag all events with session ID, device capability flags, and offline/online state for deferred scoring on session resume.",
+  },
+  {
+    index: "02",
+    label: "Scoring Endpoint",
+    detail:
+      "Stand up a Node.js inference service on Vercel Edge Functions. The endpoint accepts session JSON, runs the HADE geospatial velocity and NLP intent classifiers, and returns a scored intent payload within a 200ms SLA. Stateless design; session context is reconstructed from the ordered event buffer on each request.",
+  },
+  {
+    index: "03",
+    label: "UI Triggers",
+    detail:
+      "Wire the HADE intent payload to the Field Notes adaptive panel system via a React context provider. Intent state changes trigger panel mutations on the client without a full re-render — only the affected module subtree is updated. Offline-first: mutations are queued and applied on reconnect.",
+  },
+  {
+    index: "04",
+    label: "A/B Validation",
+    detail:
+      "Deploy a LaunchDarkly flag to split sessions between the static Field Notes layout (control) and the HADE-adaptive layout (treatment). Primary metrics: time-to-decision, module engagement depth, session completion rate. Run to p < 0.05 at 95% CI across a minimum of 3,000 sessions per cohort.",
+  },
+  {
+    index: "05",
+    label: "Threshold Iteration",
+    detail:
+      "Analyze Intent Score distributions from the A/B treatment cohort. Recalibrate geospatial velocity thresholds and NLP intent confidence floors using observed session data to reduce false-positive panel mutations and improve signal-to-noise ratio on high-intent velocity events.",
+  },
+];
+
+const TRAVEL_SCALABILITY =
+  "Designed for headless PWA deployment via an API-first signal architecture. The HADE scoring layer operates as a stateless microservice, enabling integration with any mobile or web PWA client via authenticated WebSocket or REST. Voice/NLP and geospatial modules are independently deployable and horizontally scalable. Offline-first architecture ensures signal buffering and deferred scoring during connectivity gaps, with no data loss on session resume. The signal schema is platform-agnostic; existing analytics pipelines (Segment, Amplitude) can serve as the event source without SDK replacement.";
 
 const PROBLEMS = [
   {
@@ -294,6 +343,18 @@ export default function Page() {
               description="Field Notes is live with core travel modules today. HADE integration is staged to convert user-generated signals into adaptive recommendations in-session."
               subtext="Current build supports offline core + module context while HADE backend connection is being finalized."
               buttonLabel="View Live Product"
+            />
+          </section>
+        </Reveal>
+
+        {/* ── From Prototype to Production ─────────────────────────── */}
+        <Reveal delay={390}>
+          <section className="mb-16">
+            <ProductionReadiness
+              accent={ACCENT}
+              checklist={TRAVEL_CHECKLIST}
+              roadmap={TRAVEL_ROADMAP}
+              scalabilityStatement={TRAVEL_SCALABILITY}
             />
           </section>
         </Reveal>
