@@ -100,7 +100,7 @@ function BehavioralCaptureStep({
       </div>
       <h3 className="text-2xl font-semibold tracking-tight text-ink mb-1">Live Signal Feed</h3>
       <p className="text-sm text-ink/45 mb-8">
-        Hover to build dwell time. Click to stack comparisons. Trigger hesitation to simulate a revisit loop.
+        Hover to build dwell time and click to stack comparisons. Trigger hesitation to simulate a revisit loop to build a signal.
       </p>
 
       <div className="flex-1 grid md:grid-cols-[1fr_220px] gap-5">

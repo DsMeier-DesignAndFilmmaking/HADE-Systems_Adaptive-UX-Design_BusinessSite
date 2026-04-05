@@ -33,8 +33,7 @@ export default function CaseStudyHero({ accent = "#0891B2" }: CaseStudyHeroProps
 
       {/* Subtitle */}
       <p className="text-base text-ink/65 leading-relaxed mb-5">
-        A UX-focused travel system where user-generated signals (text + voice) feed adaptive
-        panels and real-time decisioning inside Field Notes.
+      This is not a standalone product, but a signal-driven augmentation layer for the Field Notes PWA. It transforms static travel guidance into a 'listening' interface that re-ranks exploration data based on real-time traveler intent.
       </p>
 
       {/* System badge */}
