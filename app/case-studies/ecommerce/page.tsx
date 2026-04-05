@@ -5,10 +5,10 @@ import Reveal from "@/src/components/hade/animation/Reveal";
 import SplitSystemIntro from "@/components/travel/SplitSystemIntro";
 import PrincipleBlock from "@/components/travel/PrincipleBlock";
 import SystemGrid from "@/components/travel/SystemGrid";
-import BuildFocusList from "@/components/travel/BuildFocusList";
 import HadeEcommerceEngine from "@/components/ecommerce/HadeEcommerceEngine";
 import IntentStack from "@/components/ecommerce/IntentStack";
 import BusinessImpact from "@/components/ecommerce/BusinessImpact";
+import SystemsAuditMetrics from "@/components/ecommerce/SystemsAuditMetrics";
 import ProductionReadiness from "@/components/travel/ProductionReadiness";
 import type { ChecklistItem, RoadmapStep } from "@/components/travel/ProductionReadiness";
 
@@ -118,69 +118,6 @@ const FLOW_STEPS = [
   "Conversion",
 ];
 
-const EXPERIENCE_MOMENTS = [
-  {
-    label: "Browsing → Narrowing",
-    detail:
-      "User scans widely. Dwell time is low across many products. HADE detects Browsing state and begins surfacing a tighter set based on engagement patterns.",
-  },
-  {
-    label: "Comparing → Converging",
-    detail:
-      "User stacks two or three products. HADE detects Evaluating state. The catalog contracts — lower-fit options deprioritize. The gap between options becomes clearer.",
-  },
-  {
-    label: "Hesitating → Guided",
-    detail:
-      "User returns to the same product twice without acting. HADE detects Hesitation. A direct recommendation surfaces — the best fit, with rationale. The comparison loop breaks.",
-  },
-  {
-    label: "Decision → Conversion",
-    detail:
-      "Path to purchase narrows. No re-navigation, no restart. The interface has already cleared the way.",
-  },
-];
-
-const IMPLEMENTATION_PATH_ITEMS = [
-  {
-    label: "Event Ingestion",
-    detail:
-      "Real-time stream processing via Segment or RudderStack captures client-side telemetry, including dwell, comparison, revisit, and exit behavior.",
-  },
-  {
-    label: "Decisioning",
-    detail:
-      "A Node.js/Python middleware service scores active session data against the HADE intent model to produce state-aware ranking outputs.",
-  },
-  {
-    label: "Delivery",
-    detail:
-      "Edge-side execution with Next.js Middleware re-orders the JSON product response before initial paint, reducing visible decision latency.",
-  },
-  {
-    label: "Rollout",
-    detail:
-      "Deployment is gated behind a LaunchDarkly A/B feature flag to measure conversion lift against the static baseline before full release.",
-  },
-];
-
-const OUTCOME_ITEMS = [
-  {
-    tag: "Clarity",
-    title: "Decisions get faster",
-    body: "Users spend less time comparing and more time choosing. The catalog narrows before they ask it to.",
-  },
-  {
-    tag: "Confidence",
-    title: "Hesitation resolves",
-    body: "When state signals stall, HADE surfaces a recommendation. Users move forward with visible rationale.",
-  },
-  {
-    tag: "Conversion",
-    title: "Drop-off decreases",
-    body: "The highest-friction point — comparison fatigue before checkout — is where the system intervenes most.",
-  },
-];
 
 export default function Page() {
   return (
@@ -333,46 +270,6 @@ export default function Page() {
           </section>
         </Reveal>
 
-        {/* ── 6. Experience ─────────────────────────────────────────── */}
-        <Reveal delay={240}>
-          <section className="mb-12">
-            <BuildFocusList
-              items={EXPERIENCE_MOMENTS}
-              label="Experience"
-              accent={ACCENT}
-            />
-          </section>
-        </Reveal>
-
-        {/* ── 7. Implementation Path ────────────────────────────────── */}
-        <Reveal delay={260}>
-          <section className="mb-12">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-4">
-              Implementation Path (Engineering Credibility)
-            </p>
-            <p className="text-md text-ink/55 leading-relaxed mb-5">
-              HADE is structured as a deployable system across ingestion, decisioning, edge delivery, and controlled experimentation in a modern production stack.
-            </p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {IMPLEMENTATION_PATH_ITEMS.map(({ label, detail }) => (
-                <div
-                  key={label}
-                  className="rounded-xl p-5"
-                  style={{
-                    background: "rgba(11,13,18,0.03)",
-                    border: "1px solid rgba(11,13,18,0.08)",
-                  }}
-                >
-                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-ink/45 mb-2">
-                    {label}
-                  </p>
-                  <p className="text-sm text-ink/60 leading-relaxed">{detail}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        </Reveal>
-
         {/* ── 7b. Business Impact ───────────────────────────────────── */}
         <Reveal delay={275}>
           <section className="mb-12">
@@ -380,13 +277,10 @@ export default function Page() {
           </section>
         </Reveal>
 
-        {/* ── 8. Outcome ────────────────────────────────────────────── */}
-        <Reveal delay={280}>
-          <section className="mb-16">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-4">
-              Outcome
-            </p>
-            <SystemGrid items={OUTCOME_ITEMS} accent={ACCENT} />
+        {/* ── Systems Audit & KPI Matrix ──────────────────────────── */}
+        <Reveal delay={278}>
+          <section className="mb-12">
+            <SystemsAuditMetrics accent={ACCENT} />
           </section>
         </Reveal>
 
