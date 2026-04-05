@@ -12,6 +12,7 @@ import HadeEngineSystemsDiagram from "@/components/travel/HadeEngineSystemsDiagr
 import SignalArchitecture from "@/components/travel/SignalArchitecture";
 import ProductionReadiness from "@/components/travel/ProductionReadiness";
 import type { ChecklistItem, RoadmapStep } from "@/components/travel/ProductionReadiness";
+import EnterpriseMetricsAudit from "@/components/travel/EnterpriseMetricsAudit";
 
 export const metadata: Metadata = {
   title: "Travel Packs | HADE Systems",
@@ -55,7 +56,7 @@ const TRAVEL_ROADMAP: RoadmapStep[] = [
     index: "04",
     label: "A/B Validation",
     detail:
-      "Deploy a LaunchDarkly flag to split sessions between the static Field Notes layout (control) and the HADE-adaptive layout (treatment). Primary metrics: time-to-decision, module engagement depth, session completion rate. Run to p < 0.05 at 95% CI across a minimum of 3,000 sessions per cohort.",
+      "Deploy a LaunchDarkly flag to split sessions between the static Field Notes layout (control) and the HADE-adaptive layout (treatment). Primary metrics: Time-to-Decision (TTD), Signal-to-Action Ratio, and Session Resilience. Secondary outcome: POI Discovery Lift. Run to p < 0.05 at 95% CI across a minimum of 3,000 sessions per cohort. Note: LaunchDarkly flag not yet configured for this case study.",
   },
   {
     index: "05",
@@ -209,24 +210,6 @@ const CURRENT_REALITY = [
   },
 ];
 
-const SYSTEM_GAPS = [
-  "Voice transcription + confidence scoring is still mocked in the client preview layer",
-  "Trust weighting schema needs persistent memory to refine recommendations session-over-session",
-  "Within-city GPS precision is opt-in and not yet consistently available across flows",
-  "No production HADE endpoint is wired yet for live recommendation scoring",
-  "Adaptive panel telemetry is not yet connected to a closed-loop learning pipeline",
-  "Offline fallback strategy for HADE recommendations needs explicit finalization",
-  "POI freshness and source reliability controls still need operational guardrails",
-];
-
-const WHATS_NEXT = [
-  "Finalize the HADE input schema for text, voice, location, and module context",
-  "Connect the preview hook to a live HADE recommendation endpoint",
-  "Implement trust + intent weighting service in the ingestion layer",
-  "Deploy adaptive panel ranking logic in the Field Notes recommendation slot",
-  "Run real-world pilot sessions and validate confidence-scored recommendation quality",
-  "Promote decision telemetry into a repeatable optimization loop",
-];
 
 export default function Page() {
   return (
@@ -446,41 +429,14 @@ export default function Page() {
           </section>
         </Reveal>
 
-        {/* ── 8. Gaps Identified ────────────────────────────────────── */}
+        {/* ── 8. Enterprise KPIs & Metrics Audit ───────────────────── */}
         <Reveal delay={310}>
           <section className="mb-12">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-5">
-              Gaps Identified
-            </p>
-            <div className="space-y-3">
-              {SYSTEM_GAPS.map((gap, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <span className="mt-2 w-1 h-1 rounded-full bg-ink/25 shrink-0" />
-                  <p className="text-sm text-ink/60 leading-relaxed">{gap}</p>
-                </div>
-              ))}
-            </div>
+            <EnterpriseMetricsAudit accent={ACCENT} />
           </section>
         </Reveal>
 
-        {/* ── 9. What's Next ────────────────────────────────────────── */}
-        <Reveal delay={340}>
-          <section className="mb-12">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-5">
-              What&apos;s Next
-            </p>
-            <div className="space-y-3">
-              {WHATS_NEXT.map((item, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <span className="mt-2 w-1 h-1 rounded-full bg-ink/25 shrink-0" />
-                  <p className="text-sm text-ink/60 leading-relaxed">{item}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        </Reveal>
-
-        {/* ── 10. Live Product ──────────────────────────────────────── */}
+        {/* ── 9. Live Product ───────────────────────────────────────── */}
         <Reveal delay={370}>
           <section className="mb-16">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 mb-5">
@@ -496,7 +452,7 @@ export default function Page() {
           </section>
         </Reveal>
 
-        {/* ── From Prototype to Production ─────────────────────────── */}
+        {/* ── 10. From Prototype to Production ─────────────────────── */}
         <Reveal delay={390}>
           <section className="mb-16">
             <ProductionReadiness
@@ -508,7 +464,7 @@ export default function Page() {
           </section>
         </Reveal>
 
-        {/* ── CTA + Related ─────────────────────────────────────────── */}
+        {/* ── 11. CTA + Related ─────────────────────────────────────── */}
         <Reveal delay={400}>
           <CaseStudyPageCTA />
           <div className="mt-16">
