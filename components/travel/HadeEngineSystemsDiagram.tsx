@@ -32,7 +32,30 @@ interface StoredVibe {
   chips: string[];
   timestamp: number;
 }
+
+interface FieldNote {
+  id: string;
+  text: string;
+  timestamp: number;
+}
+
+interface InteractionRecord {
+  id: string;
+  keyword: string;
+  subNode: string;
+  module: ModuleContext;
+  novelty?: number;
+  timestamp: number;
+}
+
+interface HadeStoredContext {
+  vibes: StoredVibe[];
+  fieldNotes: FieldNote[];
+  interactionHistory: InteractionRecord[];
+}
+
 type LlmChoice = "gemini" | "llama" | "claude";
+type EngineStatus = "idle" | "listening" | "understanding" | "adapting";
 
 type ModuleContext = "weather-vibe" | "expert-network" | "mood-journey" | "meet-someone" | "the-wildcard";
 
@@ -224,6 +247,95 @@ function surfaceUGCContext(
   return [...storedVibes].sort((a, b) => b.timestamp - a.timestamp)[0];
 }
 
+/* --- Persistent Context Utilities --- */
+
+const HADE_STORAGE_KEY = "hade-context-v1";
+const MAX_HISTORY = 50;
+
+const EMPTY_CONTEXT: HadeStoredContext = {
+  vibes: [],
+  fieldNotes: [],
+  interactionHistory: [],
+};
+
+/** SSR-safe loader — typeof window guard prevents localStorage access during Next.js server render */
+function loadContext(): HadeStoredContext {
+  if (typeof window === "undefined") return EMPTY_CONTEXT;
+  try {
+    const raw = localStorage.getItem(HADE_STORAGE_KEY);
+    if (!raw) return EMPTY_CONTEXT;
+    const p = JSON.parse(raw) as Partial<HadeStoredContext>;
+    return {
+      vibes: Array.isArray(p.vibes) ? p.vibes : [],
+      fieldNotes: Array.isArray(p.fieldNotes) ? p.fieldNotes : [],
+      interactionHistory: Array.isArray(p.interactionHistory) ? p.interactionHistory : [],
+    };
+  } catch {
+    return EMPTY_CONTEXT;
+  }
+}
+
+/** Saves context with per-array size caps. Silently swallows QuotaExceededError. */
+function saveContext(ctx: HadeStoredContext): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(HADE_STORAGE_KEY, JSON.stringify({
+      vibes: ctx.vibes.slice(0, 100),
+      fieldNotes: ctx.fieldNotes.slice(0, 100),
+      interactionHistory: ctx.interactionHistory.slice(0, MAX_HISTORY),
+    }));
+  } catch { /* QuotaExceededError — silently fail */ }
+}
+
+/**
+ * Builds a ≤60-char natural-language context summary to append to the LLM signal.
+ * e.g. "3 past queries, City Pulse focus, spontaneous style"
+ */
+function buildContextSummary(ctx: HadeStoredContext): string {
+  if (ctx.interactionHistory.length === 0) return "";
+  const counts: Partial<Record<ModuleContext, number>> = {};
+  for (const r of ctx.interactionHistory) counts[r.module] = (counts[r.module] ?? 0) + 1;
+  const topModule = (Object.entries(counts) as [ModuleContext, number][])
+    .sort((a, b) => b[1] - a[1])[0]?.[0];
+  const allVibes = ctx.vibes.map((v) => v.raw).join(" ").toLowerCase();
+  const parts: string[] = [
+    `${ctx.interactionHistory.length} past ${ctx.interactionHistory.length === 1 ? "query" : "queries"}`,
+  ];
+  if (topModule) parts.push(`${MODULE_THEMES[topModule].label} focus`);
+  if (/spontan|adventure|surprise|wildcard/.test(allVibes)) parts.push("spontaneous style");
+  const s = parts.join(", ");
+  return s.length <= 60 ? s : s.slice(0, 57) + "...";
+}
+
+/** Simple rule-based inference — believable patterns without over-engineering. Max 4 results. */
+function derivePreferences(ctx: HadeStoredContext): string[] {
+  const prefs: string[] = [];
+
+  // Rule 1: dominant module (used ≥ 2 times)
+  const counts: Partial<Record<ModuleContext, number>> = {};
+  for (const r of ctx.interactionHistory) counts[r.module] = (counts[r.module] ?? 0) + 1;
+  const top = (Object.entries(counts) as [ModuleContext, number][]).sort((a, b) => b[1] - a[1])[0];
+  if (top && top[1] >= 2) prefs.push(`Returns to ${MODULE_THEMES[top[0]].label}`);
+
+  const vibeText = ctx.vibes.map((v) => v.raw).join(" ").toLowerCase();
+  const noteText = ctx.fieldNotes.map((n) => n.text).join(" ").toLowerCase();
+
+  if (/spontan|adventure|surprise/.test(vibeText)) prefs.push("Prefers spontaneous experiences");
+  if (/quiet|calm|peaceful/.test(vibeText)) prefs.push("Prefers quieter venues");
+  if (/local|hidden|authentic/.test(vibeText)) prefs.push("Seeks off-beat experiences");
+  if (/coffee|cafe|sit/.test(noteText)) prefs.push("Gravitates toward slow coffee moments");
+  if (ctx.interactionHistory.length >= 3) prefs.push("Active HADE explorer");
+
+  // Rule 7: high novelty average
+  const noveltyRecs = ctx.interactionHistory.filter((r) => typeof r.novelty === "number");
+  if (noveltyRecs.length > 0) {
+    const avg = noveltyRecs.reduce((s, r) => s + (r.novelty ?? 0), 0) / noveltyRecs.length;
+    if (avg > 0.7) prefs.push("Drawn to high-novelty nodes");
+  }
+
+  return prefs.slice(0, 4);
+}
+
 /* --- 3. UI Sub-Components --- */
 
 function NeuralBackboneSheet({ open, onClose, llmChoice, onSelect }: {
@@ -328,9 +440,8 @@ function NeuralBackboneSheet({ open, onClose, llmChoice, onSelect }: {
   );
 }
 
-function UnifiedInputStep({ signal, setSignal, onNext, isLoading, onCaptureContext, onCreateVibe, onOpenBackbone, surfacedVibe, mainInputRef }: any) {
+function UnifiedInputStep({ signal, setSignal, isLoading, engineStatus, onCaptureContext, onCreateVibe, onOpenBackbone, surfacedVibe, mainInputRef }: any) {
   const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
-  const hasSignalInput = signal.combinedSignal.trim().length > 0;
   return (
     <div className="relative flex min-h-[600px] flex-col overflow-hidden rounded-[2.5rem] border border-white/40 bg-white/70 p-8 backdrop-blur-2xl shadow-xl md:p-12">
       <div className="flex-1">
@@ -399,7 +510,7 @@ function UnifiedInputStep({ signal, setSignal, onNext, isLoading, onCaptureConte
           disabled={isLoading}
           suppressHydrationWarning
           className="relative z-10 mt-10 w-full resize-none rounded-[1.5rem] border-none bg-ink/[0.03] p-6 text-xl outline-none transition-all focus:bg-ink/[0.05] placeholder:text-ink/10 disabled:cursor-not-allowed disabled:opacity-70"
-          placeholder="e.g. 'I'm tired of tourist spots, show me where the locals hide when it rains'..."
+          placeholder="e.g. 'I'm looking for'..."
           rows={3}
         />
 
@@ -452,18 +563,21 @@ function UnifiedInputStep({ signal, setSignal, onNext, isLoading, onCaptureConte
           </button>
         </div>
 
-        {/* Primary action — right side */}
-        <button
-          onClick={onNext}
-          disabled={isLoading || !hasSignalInput}
-          className="group flex items-center gap-3 rounded-full px-10 py-5 text-[11px] font-black uppercase tracking-widest text-white shadow-2xl transition-all hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-70"
-          style={{
-            background: isLoading ? "#6B7280" : theme.primary,
-            cursor: isLoading || !hasSignalInput ? "not-allowed" : "pointer",
-          }}
-        >
-          {isLoading ? "Orchestrating..." : "Explore the Moment →"}
-        </button>
+        {/* Task 3: Engine status indicator — replaces submit button */}
+        <div className="flex items-center gap-2.5">
+          <motion.div
+            animate={{ opacity: [0.3, 1, 0.3] }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+            className="h-1.5 w-1.5 flex-shrink-0 rounded-full"
+            style={{ backgroundColor: theme.primary }}
+          />
+          <span className="text-[10px] font-black uppercase tracking-[0.22em] text-ink/30">
+            {engineStatus === "idle" && "Ready"}
+            {engineStatus === "listening" && "Listening..."}
+            {engineStatus === "understanding" && "Understanding..."}
+            {engineStatus === "adapting" && "Adapting..."}
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -500,7 +614,87 @@ const ProcessingStep = React.memo(function ProcessingStep({ signal, onComplete, 
   );
 });
 
-function ResultStep({ signal, generatedOutput, onRestart, onGo, resultPulse, ugcInjected, surfacedVibe }: any) {
+/* --- Task 4: Why This Recommendation — expandable reasoning trace per result card --- */
+function WhyThisSection({
+  moduleContext,
+  urgency,
+  novelty,
+  tags,
+  isOpen,
+  onToggle,
+}: {
+  moduleContext: ModuleContext;
+  urgency?: "high" | "medium" | "low";
+  novelty?: number;
+  tags: string[];
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
+  const urgencyColor =
+    urgency === "high" ? "text-rose-400" : urgency === "low" ? "text-white/25" : "text-amber-400";
+
+  return (
+    <div className="border-t border-white/10 mt-4 pt-4">
+      <button
+        onClick={onToggle}
+        className="flex items-center gap-2 text-[10px] font-mono text-white/25 hover:text-white/50 transition-colors uppercase tracking-widest"
+      >
+        <span>Why this?</span>
+        <motion.span
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+          className="inline-block"
+        >
+          ↓
+        </motion.span>
+      </button>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="pt-4 space-y-2.5 text-[10px] font-mono text-white/35">
+              <div className="flex justify-between">
+                <span>Module</span>
+                <span className="text-white/55">{MODULE_THEMES[moduleContext].label}</span>
+              </div>
+              {urgency && (
+                <div className="flex justify-between">
+                  <span>Urgency</span>
+                  <span className={urgencyColor}>{urgency}</span>
+                </div>
+              )}
+              {novelty !== undefined && (
+                <div className="flex justify-between">
+                  <span>Novelty</span>
+                  <span className="text-white/55">{Math.round(novelty * 100)}%</span>
+                </div>
+              )}
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {tags.slice(0, 3).map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded px-2 py-0.5 bg-white/5 border border-white/10 text-white/35"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function ResultStep({ signal, generatedOutput, onRestart, onGo, resultPulse, ugcInjected, surfacedVibe, alternatives, urgency, novelty, isContextShift }: any) {
   const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
   const displayKeyword =
     generatedOutput?.keyword || generatedOutput?.primary?.keyword || "HADE Node";
@@ -508,6 +702,16 @@ function ResultStep({ signal, generatedOutput, onRestart, onGo, resultPulse, ugc
     generatedOutput?.description ||
     generatedOutput?.primary?.description ||
     "Processing Istanbul signal...";
+
+  // Task 4: per-card expand state (null = all collapsed, 0 = primary)
+  const [expandedReason, setExpandedReason] = useState<number | null>(null);
+
+  // Derive status label for rank badges
+  const primaryStatusLabel = novelty !== undefined && novelty > 0.7 ? "↑ rising" : null;
+  const altStatusLabel = (i: number) =>
+    novelty !== undefined && novelty > 0.5 ? "new" : i === 0 ? "—" : "↓ fading";
+
+  const safeAlternatives: DecisionNode[] = Array.isArray(alternatives) ? alternatives : [];
 
   return (
     <div>
@@ -564,42 +768,113 @@ function ResultStep({ signal, generatedOutput, onRestart, onGo, resultPulse, ugc
         )}
       </AnimatePresence>
 
+      {/* Task 2: Context shift detected banner */}
+      <AnimatePresence>
+        {isContextShift && (
+          <motion.div
+            key="context-shift-banner"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.35 }}
+            className="mb-4 rounded-xl border border-white/10 bg-ink/60 px-4 py-2.5 text-[10px] font-mono tracking-widest text-white/40 uppercase backdrop-blur-sm"
+          >
+            Context shift detected — recommendations updated
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Pulse wrapper */}
       <motion.div
         animate={resultPulse ? { scale: [1, 1.012, 1] } : {}}
         transition={{ duration: 0.9, ease: "easeOut" }}
       >
-    <div className="relative flex min-h-[600px] flex-col overflow-hidden rounded-[2.5rem] bg-ink p-8 text-white shadow-2xl md:p-12">
-      <div className="flex-1">
-        <div className="flex items-center gap-3 mb-10">
-          <div className="h-1 w-12 rounded-full" style={{ background: theme.primary }} />
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">{theme.tagline} Output</span>
-        </div>
-        <h4 className="text-5xl font-bold tracking-tighter leading-tight max-w-xl">{theme.resultTitle}</h4>
-        <p className="mt-8 text-2xl text-white/50 leading-relaxed font-light max-w-2xl italic">
-          "We've tuned the Istanbul pulse for{' '}
-          <span style={{ textDecorationLine: 'underline', textDecorationColor: theme.primary, textDecorationThickness: '1px', textUnderlineOffset: '8px', color: 'white', opacity: 1 }}>{displayKeyword}</span>
-          . {displayDesc}"
-        </p>
-        {generatedOutput.tags?.length > 0 && (
-          <div className="mt-6 flex flex-wrap gap-2">
-            {generatedOutput.tags.slice(0, 4).map((tag: string) => (
-              <span key={tag} className="rounded-full border border-white/20 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white/70">
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
 
-      <div className="mt-12 flex flex-col md:flex-row items-center gap-6 border-t border-white/5 pt-10">
-        <button onClick={onGo} className="group w-full md:w-auto flex items-center justify-center gap-4 rounded-full bg-white px-12 py-6 text-[13px] font-black uppercase tracking-[0.15em] text-ink transition-all hover:scale-[1.05]">
-          {theme.action}
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </button>
-        <button onClick={onRestart} className="text-[11px] font-black uppercase tracking-widest text-white/20 hover:text-white transition">Ignore Recommendation</button>
-      </div>
-    </div>
+        {/* Task 1: Primary result card (rank #1) */}
+        <motion.div
+          key={displayKeyword}
+          layout
+          className="relative flex flex-col overflow-hidden rounded-[2.5rem] bg-ink p-8 text-white shadow-2xl md:p-12"
+        >
+          {/* Rank badge + status */}
+          <div className="flex items-center gap-2 mb-6">
+            <span className="text-[10px] font-mono" style={{ color: theme.primary }}>#1</span>
+            {primaryStatusLabel && (
+              <span className="text-[10px] font-mono text-white/30">{primaryStatusLabel}</span>
+            )}
+            <div className="ml-auto flex items-center gap-3">
+              <div className="h-1 w-12 rounded-full" style={{ background: theme.primary }} />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">{theme.tagline} Output</span>
+            </div>
+          </div>
+
+          <h4 className="text-5xl font-bold tracking-tighter leading-tight max-w-xl">{theme.resultTitle}</h4>
+          <p className="mt-8 text-2xl text-white/50 leading-relaxed font-light max-w-2xl italic">
+            &ldquo;We&apos;ve tuned the Istanbul pulse for{' '}
+            <span style={{ textDecorationLine: 'underline', textDecorationColor: theme.primary, textDecorationThickness: '1px', textUnderlineOffset: '8px', color: 'white', opacity: 1 }}>{displayKeyword}</span>
+            . {displayDesc}&rdquo;
+          </p>
+
+          {generatedOutput.tags?.length > 0 && (
+            <div className="mt-6 flex flex-wrap gap-2">
+              {generatedOutput.tags.slice(0, 4).map((tag: string) => (
+                <span key={tag} className="rounded-full border border-white/20 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white/70">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Task 4: Why this — primary card */}
+          <WhyThisSection
+            moduleContext={signal.moduleContext as ModuleContext}
+            urgency={urgency}
+            novelty={novelty}
+            tags={generatedOutput.tags ?? []}
+            isOpen={expandedReason === 0}
+            onToggle={() => setExpandedReason(expandedReason === 0 ? null : 0)}
+          />
+
+          <div className="mt-10 flex flex-col md:flex-row items-center gap-6 border-t border-white/5 pt-8">
+            <button onClick={onGo} className="group w-full md:w-auto flex items-center justify-center gap-4 rounded-full bg-white px-12 py-6 text-[13px] font-black uppercase tracking-[0.15em] text-ink transition-all hover:scale-[1.05]">
+              {theme.action}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
+            <button onClick={onRestart} className="text-[11px] font-black uppercase tracking-widest text-white/20 hover:text-white transition">Try Another Signal</button>
+          </div>
+        </motion.div>
+
+        {/* Task 1: Alternative cards (ranks #2, #3) */}
+        <AnimatePresence mode="popLayout">
+          {safeAlternatives.map((alt: DecisionNode, i: number) => (
+            <motion.div
+              key={alt.keyword}
+              layout
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 6 }}
+              transition={{ duration: 0.4, delay: 0.08 * (i + 1), ease: [0.19, 1, 0.22, 1] }}
+              className="mt-3 rounded-[1.75rem] border border-white/8 bg-ink/60 p-5 backdrop-blur-sm"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[9px] font-mono" style={{ color: theme.primary }}>#{i + 2}</span>
+                <span className="text-[9px] font-mono text-white/25">{altStatusLabel(i)}</span>
+              </div>
+              <h5 className="text-lg font-bold text-white leading-tight">{alt.keyword}</h5>
+              <p className="mt-1.5 text-sm text-white/35 line-clamp-2 leading-relaxed">{alt.description}</p>
+              <p className="mt-2 text-[10px] font-mono text-white/20">{alt.subNode}</p>
+
+              {/* Task 4: Why this — alternative cards (tags only) */}
+              <WhyThisSection
+                moduleContext={signal.moduleContext as ModuleContext}
+                tags={[]}
+                isOpen={expandedReason === i + 1}
+                onToggle={() => setExpandedReason(expandedReason === i + 1 ? null : i + 1)}
+              />
+            </motion.div>
+          ))}
+        </AnimatePresence>
+
       </motion.div>
     </div>
   );
@@ -1414,6 +1689,226 @@ function UGCBottomSheet({ open, onClose, onSubmit }: {
   );
 }
 
+/* --- Context Model Panel --- */
+
+const MODULE_ICONS: Record<ModuleContext, string> = {
+  "weather-vibe": "◉",
+  "expert-network": "⬡",
+  "mood-journey": "◈",
+  "meet-someone": "◎",
+  "the-wildcard": "◇",
+};
+
+function ContextModelPanel({
+  storedContext,
+  isGrowing,
+}: {
+  storedContext: HadeStoredContext;
+  isGrowing: boolean;
+}) {
+  // SSR hydration guard — show empty shell on server, real content after client mount
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => { setMounted(true); }, []);
+
+  const prefs = mounted ? derivePreferences(storedContext) : [];
+  const { vibes, fieldNotes, interactionHistory } = storedContext;
+  const isEmpty =
+    !mounted ||
+    (vibes.length === 0 && fieldNotes.length === 0 && interactionHistory.length === 0);
+
+  // Derive active accent from most recent interaction's module theme
+  const lastModule = [...interactionHistory].sort((a, b) => b.timestamp - a.timestamp)[0]?.module;
+  const activeColor = lastModule ? MODULE_THEMES[lastModule].primary : "#10B981";
+
+  const recentInteractions = [...interactionHistory]
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice(0, 3);
+
+  return (
+    <motion.div
+      animate={
+        isGrowing
+          ? {
+              boxShadow: [
+                `0 0 0px ${activeColor}00`,
+                `0 0 14px ${activeColor}44`,
+                `0 0 0px ${activeColor}00`,
+              ],
+            }
+          : { boxShadow: "0 0 0px transparent" }
+      }
+      transition={{ duration: 1.8, ease: "easeInOut" }}
+      className="mt-4 rounded-2xl border border-ink/[0.05] bg-ink/[0.015] px-4 py-3.5"
+      style={isGrowing ? { borderColor: `${activeColor}33` } : undefined}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[9px] font-mono tracking-[0.22em] text-ink/20 uppercase">
+          Your Context Model
+        </span>
+        <AnimatePresence>
+          {isGrowing && (
+            <motion.span
+              key="growing-label"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 1, 0] }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1.6, repeat: 1, ease: "easeInOut" }}
+              className="text-[9px] font-mono italic"
+              style={{ color: activeColor }}
+            >
+              Context evolving
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {isEmpty ? (
+        <p className="text-[10px] font-mono text-ink/15 italic">No signals captured yet.</p>
+      ) : (
+        <div className="space-y-3.5">
+          {/* Signal inventory */}
+          <div className="grid grid-cols-3 gap-4">
+            {(
+              [
+                ["Vibes", vibes.length],
+                ["Field Notes", fieldNotes.length],
+                ["Queries", interactionHistory.length],
+              ] as [string, number][]
+            ).map(([label, val]) => (
+              <div key={label}>
+                <p className="text-[9px] font-mono text-ink/20 mb-1 uppercase tracking-wider">
+                  {label}
+                </p>
+                <p className="text-sm font-mono text-ink/40">{val}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Inferred preferences */}
+          {prefs.length > 0 && (
+            <div>
+              <p className="text-[9px] font-mono text-ink/20 mb-2 uppercase tracking-wider">
+                Inferred Preferences
+              </p>
+              <div className="flex flex-col gap-1.5">
+                <AnimatePresence>
+                  {prefs.map((pref, i) => (
+                    <motion.div
+                      key={pref}
+                      initial={{ opacity: 0, x: -6 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.3, delay: isGrowing ? i * 0.12 : 0 }}
+                      className="flex items-center gap-2"
+                    >
+                      <div
+                        className="h-1 w-1 flex-shrink-0 rounded-full"
+                        style={{ backgroundColor: activeColor }}
+                      />
+                      <span className="text-[10px] font-mono text-ink/35">{pref}</span>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            </div>
+          )}
+
+          {/* Recent interaction chips */}
+          {recentInteractions.length > 0 && (
+            <div>
+              <p className="text-[9px] font-mono text-ink/20 mb-2 uppercase tracking-wider">
+                Recent
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {recentInteractions.map((rec) => (
+                  <span
+                    key={rec.id}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-ink/[0.06] bg-ink/[0.03] px-2.5 py-1 text-[9px] font-mono text-ink/30"
+                  >
+                    <span style={{ color: MODULE_THEMES[rec.module].primary }}>
+                      {MODULE_ICONS[rec.module]}
+                    </span>
+                    {rec.keyword}
+                    <span className="text-ink/15">·</span>
+                    {rec.subNode}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+/* --- Task 5: Simulated Passive Signals Panel --- */
+function PassiveSignalsPanel({ isActive }: { isActive: boolean }) {
+  const [dwellSeconds, setDwellSeconds] = useState(0);
+  const [locationConfidence, setLocationConfidence] = useState(88);
+
+  // Dwell time counter — increments every second when active
+  useEffect(() => {
+    if (!isActive) return;
+    const id = setInterval(() => setDwellSeconds((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [isActive]);
+
+  // Slowly oscillating GPS confidence — simulates sensor noise (±2% drift)
+  useEffect(() => {
+    if (!isActive) return;
+    const id = setInterval(() => {
+      setLocationConfidence((v) => {
+        const drift = (Math.random() - 0.5) * 4;
+        return Math.min(98, Math.max(78, Math.round(v + drift)));
+      });
+    }, 3200);
+    return () => clearInterval(id);
+  }, [isActive]);
+
+  const timeOfDay = new Date().toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  return (
+    <div className="mt-4 rounded-2xl border border-ink/[0.05] bg-ink/[0.015] px-4 py-3.5">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[9px] font-mono tracking-[0.22em] text-ink/20 uppercase">
+          Live Context Signals
+        </span>
+        <span className="text-[9px] font-mono text-ink/15 italic">Simulated Layer</span>
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        {/* Dwell Time */}
+        <div>
+          <p className="text-[9px] font-mono text-ink/20 mb-1 uppercase tracking-wider">Dwell Time</p>
+          <p className="text-sm font-mono text-ink/40">{dwellSeconds}s</p>
+        </div>
+        {/* Local Time */}
+        <div>
+          <p className="text-[9px] font-mono text-ink/20 mb-1 uppercase tracking-wider">Local Time</p>
+          <p className="text-sm font-mono text-ink/40">{timeOfDay}</p>
+        </div>
+        {/* GPS Confidence */}
+        <div>
+          <p className="text-[9px] font-mono text-ink/20 mb-1 uppercase tracking-wider">GPS Confidence</p>
+          <div className="flex items-center gap-1.5">
+            <motion.div
+              animate={{ opacity: [0.4, 1, 0.4] }}
+              transition={{ duration: 2.1, repeat: Infinity, ease: "easeInOut" }}
+              className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-emerald-500"
+            />
+            <p className="text-sm font-mono text-ink/40">{locationConfidence}%</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* --- 5. Main Controller --- */
 
 export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
@@ -1443,6 +1938,33 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
   const [vibeActiveTab, setVibeActiveTab] = useState<"voice" | "text">("voice");
   const [storedVibes, setStoredVibes] = useState<StoredVibe[]>([]);
 
+  // Persistent context model — useEffect hydration avoids Next.js SSR/client mismatch.
+  // (useState(loadContext) lazy initializer would run on the server, causing a hydration warning
+  //  because server returns EMPTY_CONTEXT while client finds real localStorage data.)
+  const [storedContext, setStoredContext] = useState<HadeStoredContext>(EMPTY_CONTEXT);
+  useEffect(() => { setStoredContext(loadContext()); }, []);
+
+  const [contextGrowing, setContextGrowing] = useState(false);
+  const contextGrowingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Task 1: Re-ranked results — store alternatives and raw API meta
+  const [generatedAlternatives, setGeneratedAlternatives] = useState<DecisionNode[]>([]);
+  const [rawApiMeta, setRawApiMeta] = useState<{
+    urgency?: "high" | "medium" | "low";
+    novelty?: number;
+    tags: string[];
+  }>({ tags: [] });
+
+  // Task 2: Signal delta — track previous output and context shift state
+  const [previousOutput, setPreviousOutput] = useState<GeneratedOutput | null>(null);
+  const [isContextShift, setIsContextShift] = useState(false);
+
+  // Task 3: Auto-trigger — engine status and debounce ref
+  const [engineStatus, setEngineStatus] = useState<EngineStatus>("idle");
+  const autoTriggerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Ref to always call the latest handleExplore from the debounce timeout
+  const handleExploreRef = useRef<() => void>(() => {});
+
   const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
 
   const handleTimerComplete = useCallback(() => {
@@ -1453,16 +1975,32 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
     }
   }, [step]);
 
+  // Triggers the 2-second context growth animation. Resets the timer on rapid successive calls.
+  const triggerContextGrowth = useCallback(() => {
+    setContextGrowing(true);
+    if (contextGrowingTimerRef.current) clearTimeout(contextGrowingTimerRef.current);
+    contextGrowingTimerRef.current = setTimeout(() => setContextGrowing(false), 2000);
+  }, []);
+
   // UGC Context Injection — stores field note separately, never touches the visible textarea
   const handleUGCSubmit = useCallback((newSignal: string) => {
     setUgcSignal((prev) => prev.trim() ? `${prev} — ${newSignal}` : newSignal);
     setUgcInjected(true);
 
+    // Persist field note to context model
+    const newNote: FieldNote = { id: `note-${Date.now()}`, text: newSignal, timestamp: Date.now() };
+    setStoredContext((prev) => {
+      const updated = { ...prev, fieldNotes: [newNote, ...prev.fieldNotes] };
+      saveContext(updated);
+      return updated;
+    });
+    triggerContextGrowth();
+
     if (step === "result" || step === "mapping") {
       setResultPulse(true);
       setTimeout(() => setResultPulse(false), 900);
     }
-  }, [step]);
+  }, [step, triggerContextGrowth]);
 
   // Vibe Creator handler — isolated from all Discovery step-machine state
   const handleVibeCapture = useCallback(() => {
@@ -1478,7 +2016,16 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
       chips: [...VIBE_CHIPS_DEFAULT],
       timestamp: Date.now(),
     };
+    // Keep storedVibes in sync — surfaceUGCContext still reads from it
     setStoredVibes((prev) => [newVibe, ...prev]);
+
+    // Persist to context model
+    setStoredContext((prev) => {
+      const updated = { ...prev, vibes: [newVibe, ...prev.vibes] };
+      saveContext(updated);
+      return updated;
+    });
+    triggerContextGrowth();
 
     setTimeout(() => {
       setVibeMode("confirmed");
@@ -1489,7 +2036,7 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
         setVibeMode("idle");
       }, 900);
     }, 1900);
-  }, [vibeRaw]);
+  }, [vibeRaw, triggerContextGrowth]);
 
   // Gate: when data is ready, Llama exits immediately; Gemini waits for timer pulse.
   // Claude uses its own setTimeout path in handleExplore and is excluded here.
@@ -1507,8 +2054,49 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
   useEffect(() => {
     if (step === "result") {
       setIsLoading(false);
+      // Task 3: brief "adapting" status, then idle
+      setEngineStatus("adapting");
+      const t = setTimeout(() => setEngineStatus("idle"), 1400);
+      return () => clearTimeout(t);
     }
   }, [step]);
+
+  // Task 2: Auto-clear the context shift banner after 2.2s
+  useEffect(() => {
+    if (!isContextShift) return;
+    const t = setTimeout(() => setIsContextShift(false), 2200);
+    return () => clearTimeout(t);
+  }, [isContextShift]);
+
+  // Task 3: Auto-trigger — fires handleExplore after 800ms idle on input step.
+  // Keeps the ref current so the closure always calls the latest version.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { handleExploreRef.current = handleExplore; });
+
+  useEffect(() => {
+    // Guard: only auto-trigger from input step and when not already loading
+    if (step !== "input" || isLoading) {
+      if (step !== "input") setEngineStatus("idle");
+      return;
+    }
+    const trimmed = signal.combinedSignal.trim();
+    if (trimmed.length < 8) {
+      setEngineStatus("idle");
+      if (autoTriggerRef.current) clearTimeout(autoTriggerRef.current);
+      return;
+    }
+    // Signal is long enough — show "listening" state and schedule trigger
+    setEngineStatus("listening");
+    if (autoTriggerRef.current) clearTimeout(autoTriggerRef.current);
+    autoTriggerRef.current = setTimeout(() => {
+      setEngineStatus("understanding");
+      handleExploreRef.current();
+    }, 800);
+    return () => {
+      if (autoTriggerRef.current) clearTimeout(autoTriggerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signal.combinedSignal, signal.moduleContext, step, isLoading]);
 
   // Focus restoration after the modal closes.
   useEffect(() => {
@@ -1587,6 +2175,14 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
     // Interaction guard: prevent overlapping requests/transitions.
     if (isLoading) return;
 
+    // Task 2: If there is a real (non-default) result already showing, record it as a context shift.
+    const hasRealOutput = generatedOutput.keyword !== DEFAULT_OUTPUT.keyword;
+    if (hasRealOutput) {
+      setPreviousOutput(generatedOutput);
+      setIsContextShift(true);
+    }
+
+    setEngineStatus("understanding");
     setApiError(null);
     exploreStartRef.current = Date.now();
     setTimerDone(false);
@@ -1600,13 +2196,18 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
         .filter(Boolean)
         .join(" — ");
 
+      // Enrich signal with stored context summary — LLM receives it as part of the signal text
+      const contextSummary = buildContextSummary(storedContext);
+      const enrichedSignal = contextSummary
+        ? `${combinedForRequest} — [context: ${contextSummary}]`
+        : combinedForRequest;
+
       const requestPayload = {
-        signal: combinedForRequest,
+        signal: enrichedSignal,
         module: signal.moduleContext,
         location: signal.location,
         llmChoice: signal.llmChoice,
       };
-      // Async fix: await fetch + await response parse with full error handling.
       console.log("[HADE Demo] Request payload", requestPayload);
 
       const res = await fetch("/api/generate-hade", {
@@ -1622,6 +2223,18 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
         throw new Error(`API error (${res.status})`);
       }
 
+      // Task 1: Extract alternatives and meta BEFORE mapping discards them.
+      const typedRaw = rawData as HadeApiResponse;
+      const rawAlternatives: DecisionNode[] = Array.isArray(typedRaw?.alternatives)
+        ? typedRaw.alternatives.filter(isValidDecisionNode).slice(0, 2)
+        : [];
+      setGeneratedAlternatives(rawAlternatives);
+      setRawApiMeta({
+        urgency: typedRaw?.urgency,
+        novelty: typeof typedRaw?.novelty === "number" ? typedRaw.novelty : undefined,
+        tags: Array.isArray(typedRaw?.tags) ? typedRaw.tags : [],
+      });
+
       const parsedCardData = mapApiResponseToOutput(
         rawData,
         signal.moduleContext,
@@ -1629,6 +2242,24 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
       );
       console.log("FINAL MAPPED DATA:", parsedCardData);
       setGeneratedOutput(parsedCardData);
+
+      // Persist interaction record — use typedRaw.novelty directly because rawApiMeta
+      // state update is batched and the closure value hasn't updated yet.
+      const newInteraction: InteractionRecord = {
+        id: `interaction-${Date.now()}`,
+        keyword: parsedCardData.keyword,
+        subNode: parsedCardData.subNode,
+        module: signal.moduleContext,
+        novelty: typeof typedRaw?.novelty === "number" ? typedRaw.novelty : undefined,
+        timestamp: Date.now(),
+      };
+      setStoredContext((prev) => {
+        const updated = { ...prev, interactionHistory: [newInteraction, ...prev.interactionHistory] };
+        saveContext(updated);
+        return updated;
+      });
+      triggerContextGrowth();
+
       setDataReady(true); // Only set on success — prevents stale timer-gate transitions on error.
 
       // Llama fast-path: bypass timer gate immediately once data is available.
@@ -1650,9 +2281,10 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
     } catch (error) {
       console.error("[HADE Demo] Failed to generate decision", error);
       // Return to input — do NOT advance to result with stale/fallback data.
-      // setDataReady intentionally stays false: prevents the timer-gate useEffect from firing.
       setStep("input");
       setIsLoading(false);
+      setEngineStatus("idle");
+      setIsContextShift(false);
       setApiError("The HADE engine couldn't reach the API. Please try again.");
     }
   };
@@ -1669,6 +2301,13 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
     setUgcInjected(false);
     setResultPulse(false);
     setVibeMode("idle");
+    // Task 1–3: reset new state
+    setGeneratedAlternatives([]);
+    setRawApiMeta({ tags: [] });
+    setPreviousOutput(null);
+    setIsContextShift(false);
+    setEngineStatus("idle");
+    if (autoTriggerRef.current) clearTimeout(autoTriggerRef.current);
     // storedVibes intentionally preserved — vibes persist across restarts
   };
 
@@ -1716,8 +2355,8 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
             <UnifiedInputStep
               signal={signal}
               setSignal={setSignal}
-              onNext={handleExplore}
               isLoading={isLoading}
+              engineStatus={engineStatus}
               onCaptureContext={() => setUgcSheetOpen(true)}
               onCreateVibe={openVibeCreator}
               onOpenBackbone={() => setBackboneSheetOpen(true)}
@@ -1742,11 +2381,23 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
               resultPulse={resultPulse}
               ugcInjected={ugcInjected}
               surfacedVibe={surfacedVibe}
+              alternatives={generatedAlternatives}
+              urgency={rawApiMeta.urgency}
+              novelty={rawApiMeta.novelty}
+              isContextShift={isContextShift}
             />
           )}
           {step === "mapping" && <TacticalMapStep signal={signal} generatedOutput={safeOutput} onRestart={restart} resultPulse={resultPulse} ugcInjected={ugcInjected} />}
         </motion.div>
       </AnimatePresence>
+
+      {/* Task 5: Passive signals panel — always visible, activates on user engagement */}
+      <PassiveSignalsPanel
+        isActive={step !== "input" || signal.combinedSignal.trim().length > 0}
+      />
+
+      {/* Persistent context model — grows as user interacts across sessions */}
+      <ContextModelPanel storedContext={storedContext} isGrowing={contextGrowing} />
 
       {/* Vibe Creator overlay — isolated Vibe state machine, never touches StepId */}
       <VibeCreationOverlay

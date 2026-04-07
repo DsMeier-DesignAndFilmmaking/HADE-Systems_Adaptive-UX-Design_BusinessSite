@@ -15,7 +15,7 @@ import type { ChecklistItem, RoadmapStep } from "@/components/travel/ProductionR
 export const metadata: Metadata = {
   title: "Adaptive Purchase Decision Engine | HADE Systems",
   description:
-    "An infrastructure-level decision layer designed to recover mid-funnel drop-off. By classifying shopper intent in real-time, the system dynamically restructures PLG (Product-Led Growth) catalogs to reduce choice fatigue and accelerate the path to checkout.",
+    "An interactive behavioral ranking demo that models shopper signals in-browser. The experience shows how dwell, comparison, revisit, and session context can shift product ranking and state interpretation in real time.",
 };
 
 const ACCENT = "#316BFF";
@@ -90,22 +90,22 @@ const SYSTEM_ITEMS = [
   {
     tag: "Signal Layer",
     title: "Behavioral Capture",
-    body: "Dwell time per product, comparison stacking, return visits, and exit timing are tracked continuously — building a live picture of purchase intent.",
+    body: "The demo captures dwell, comparison stacking, revisits, and session context signals in-browser to simulate a live intent stream.",
   },
   {
     tag: "State Detection",
     title: "Purchase State Engine",
-    body: "Three states: Browsing (wide scan, low dwell), Evaluating (active comparisons, deep attention), Hesitating (revisits with no action — intent present, friction blocking).",
+    body: "A pseudo-model classifies each session into Browsing, Evaluating, Hesitating, or Deciding based on weighted behavioral signals.",
   },
   {
     tag: "HADE Decision Engine",
     title: "Option Ranking",
-    body: "Scores products against detected state. Reduces the visible list to highest-fit matches. Deprioritizes noise without removing catalog depth.",
+    body: "Signal-weighted scoring re-ranks products continuously so movement in behavior has visible ranking consequences.",
   },
   {
     tag: "Output Layer",
     title: "Adaptive UI",
-    body: "The interface restructures around the decision. A recommendation surfaces during hesitation. The path to purchase narrows as confidence increases.",
+    body: "The interface surfaces state, confidence, and reasoning traces so ranking changes are legible at decision time.",
   },
 ];
 
@@ -146,7 +146,7 @@ export default function Page() {
                   color: ACCENT,
                 }}
               >
-                Concept Build
+                Real-Time Signal Processing Layer
               </span>
               <span className="rounded-full border border-line bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-ink/45">
                 E-Commerce
@@ -156,8 +156,8 @@ export default function Page() {
               Adaptive Purchase Decision Engine
             </h1>
             <p className="text-base text-ink/65 leading-relaxed">
-              A decision system that reads how a user is shopping in real time — detecting state,
-              ranking options, and restructuring the catalog to match.
+              A production-oriented interaction model that simulates real-time behavioral scoring in-browser.
+              As users interact, the system re-ranks products, updates detected state, and exposes reasoning behind each shift.
             </p>
           </div>
         </Reveal>
@@ -180,7 +180,7 @@ export default function Page() {
               right={{
                 label: "HADE Engine Layer",
                 heading: "State-driven decision layer",
-                body: "Behavioral signals — dwell time, comparisons, revisits — feed HADE in real time. The system detects state and restructures what the user sees.",
+                body: "Behavioral signals — dwell, comparisons, revisits, and session context — are scored continuously in the demo to update state, confidence, and rank order.",
               }}
             />
           </section>
@@ -219,7 +219,7 @@ export default function Page() {
             <PrincipleBlock
               accent={ACCENT}
               statement="The catalog should respond to how the user is shopping — not the other way around."
-              supporting="HADE reads behavioral signals in real time, classifies purchase state, and restructures the decision environment so the right product surfaces at the right moment."
+              supporting="This case study demonstrates a live in-browser scoring loop: behavioral input updates state interpretation, model confidence, and product ordering with visible cause-and-effect."
             />
           </section>
         </Reveal>
@@ -231,7 +231,7 @@ export default function Page() {
               System
             </p>
             <p className="text-md text-ink/55 leading-relaxed mb-5">
-              Signals flow in, state is classified, and the decision engine restructures the interface — continuously, in session.
+              Signals flow in, the pseudo-model classifies state, and ranking updates continuously in-session with traceable reasoning.
             </p>
             <SystemGrid items={SYSTEM_ITEMS} accent={ACCENT} />
             <div
