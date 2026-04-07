@@ -32,6 +32,23 @@ interface StoredVibe {
   chips: string[];
   timestamp: number;
 }
+
+interface FieldNote { id: string; text: string; timestamp: number; }
+
+interface InteractionRecord {
+  id: string;
+  keyword: string;
+  subNode: string;
+  module: ModuleContext;
+  novelty?: number;
+  timestamp: number;
+}
+
+interface HadeStoredContext {
+  vibes: StoredVibe[];
+  fieldNotes: FieldNote[];
+  interactionHistory: InteractionRecord[];
+}
 type LlmChoice = "gemini" | "llama" | "claude";
 
 type ModuleContext = "weather-vibe" | "expert-network" | "mood-journey" | "meet-someone" | "the-wildcard";
@@ -82,6 +99,8 @@ interface HadeApiResponse {
   urgency?: "high" | "medium" | "low";
   novelty?: number;
 }
+
+type EngineStatus = "idle" | "listening" | "understanding" | "adapting";
 
 /* --- UGC Field Notes --- */
 
@@ -224,7 +243,278 @@ function surfaceUGCContext(
   return [...storedVibes].sort((a, b) => b.timestamp - a.timestamp)[0];
 }
 
+/* --- Persistence Utilities --- */
+
+const HADE_STORAGE_KEY = "hade-context-v1";
+const MAX_HISTORY = 50;
+const EMPTY_CONTEXT: HadeStoredContext = { vibes: [], fieldNotes: [], interactionHistory: [] };
+
+function loadContext(): HadeStoredContext {
+  if (typeof window === "undefined") return EMPTY_CONTEXT;
+  try {
+    const raw = localStorage.getItem(HADE_STORAGE_KEY);
+    if (!raw) return EMPTY_CONTEXT;
+    const p = JSON.parse(raw) as Partial<HadeStoredContext>;
+    return {
+      vibes: Array.isArray(p.vibes) ? p.vibes : [],
+      fieldNotes: Array.isArray(p.fieldNotes) ? p.fieldNotes : [],
+      interactionHistory: Array.isArray(p.interactionHistory) ? p.interactionHistory : [],
+    };
+  } catch { return EMPTY_CONTEXT; }
+}
+
+function saveContext(ctx: HadeStoredContext): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(HADE_STORAGE_KEY, JSON.stringify({
+      vibes: ctx.vibes.slice(0, 100),
+      fieldNotes: ctx.fieldNotes.slice(0, 100),
+      interactionHistory: ctx.interactionHistory.slice(0, MAX_HISTORY),
+    }));
+  } catch { /* QuotaExceededError — silently fail */ }
+}
+
+function buildContextSummary(ctx: HadeStoredContext): string {
+  if (ctx.interactionHistory.length === 0) return "";
+  const counts: Partial<Record<ModuleContext, number>> = {};
+  for (const r of ctx.interactionHistory) counts[r.module] = (counts[r.module] ?? 0) + 1;
+  const topModule = (Object.entries(counts) as [ModuleContext, number][])
+    .sort((a, b) => b[1] - a[1])[0]?.[0];
+  const allVibes = ctx.vibes.map(v => v.raw).join(" ").toLowerCase();
+  const parts: string[] = [`${ctx.interactionHistory.length} past ${ctx.interactionHistory.length === 1 ? "query" : "queries"}`];
+  if (topModule) parts.push(`${MODULE_THEMES[topModule].label} focus`);
+  if (/spontan|adventure|surprise|wildcard/.test(allVibes)) parts.push("spontaneous style");
+  const s = parts.join(", ");
+  return s.length <= 60 ? s : s.slice(0, 57) + "...";
+}
+
+function derivePreferences(ctx: HadeStoredContext): string[] {
+  const prefs: string[] = [];
+  const counts: Partial<Record<ModuleContext, number>> = {};
+  for (const r of ctx.interactionHistory) counts[r.module] = (counts[r.module] ?? 0) + 1;
+  const top = (Object.entries(counts) as [ModuleContext, number][]).sort((a, b) => b[1] - a[1])[0];
+  if (top && top[1] >= 2) prefs.push(`Returns to ${MODULE_THEMES[top[0]].label}`);
+  const vibeText = ctx.vibes.map(v => v.raw).join(" ").toLowerCase();
+  const noteText = ctx.fieldNotes.map(n => n.text).join(" ").toLowerCase();
+  if (/spontan|adventure|surprise/.test(vibeText)) prefs.push("Prefers spontaneous experiences");
+  if (/quiet|calm|peace|solo/.test(vibeText + noteText)) prefs.push("Favors quieter settings");
+  if (/food|eat|cafe|coffee|restaurant/.test(vibeText + noteText)) prefs.push("Food & cafe signals active");
+  if (/night|evening|late/.test(vibeText + noteText)) prefs.push("Evening time preference");
+  if (ctx.interactionHistory.some(r => (r.novelty ?? 0) > 0.7)) prefs.push("High novelty tolerance");
+  if (ctx.fieldNotes.length >= 3) prefs.push("Active field note contributor");
+  return prefs.slice(0, 4);
+}
+
+const MODULE_ICONS: Record<ModuleContext, string> = {
+  "weather-vibe": "◉",
+  "expert-network": "⬡",
+  "mood-journey": "◈",
+  "meet-someone": "◎",
+  "the-wildcard": "◇",
+};
+
 /* --- 3. UI Sub-Components --- */
+
+function WhyThisSection({ moduleContext, urgency, novelty, tags, isOpen, onToggle }: {
+  moduleContext: ModuleContext;
+  urgency?: string;
+  novelty?: number;
+  tags: string[];
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
+  const urgencyColor = urgency === "high" ? "text-red-400" : urgency === "medium" ? "text-amber-400" : "text-emerald-400";
+  return (
+    <div className="border-t border-white/10 mt-4 pt-4">
+      <button onClick={onToggle} className="flex items-center gap-2 text-[10px] font-mono text-white/25 hover:text-white/50 transition-colors uppercase tracking-widest">
+        <span>Why this?</span>
+        <motion.span animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }} className="inline-block">↓</motion.span>
+      </button>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22 }}
+            className="overflow-hidden"
+          >
+            <div className="pt-4 space-y-2.5 text-[10px] font-mono text-white/35">
+              <div className="flex justify-between">
+                <span>Module</span>
+                <span className="text-white/55">{MODULE_THEMES[moduleContext].label}</span>
+              </div>
+              {urgency && (
+                <div className="flex justify-between">
+                  <span>Urgency</span>
+                  <span className={urgencyColor}>{urgency}</span>
+                </div>
+              )}
+              {novelty !== undefined && (
+                <div className="flex justify-between">
+                  <span>Novelty</span>
+                  <span>{Math.round(novelty * 100)}%</span>
+                </div>
+              )}
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {tags.slice(0, 3).map(tag => (
+                    <span key={tag} className="rounded px-2 py-0.5 bg-white/5 border border-white/10">{tag}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function PassiveSignalsPanel({ isActive }: { isActive: boolean }) {
+  const [dwellSeconds, setDwellSeconds] = useState(0);
+  const [locationConfidence, setLocationConfidence] = useState(88);
+  useEffect(() => {
+    if (!isActive) return;
+    const id = setInterval(() => setDwellSeconds((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [isActive]);
+  useEffect(() => {
+    if (!isActive) return;
+    const id = setInterval(() => {
+      setLocationConfidence((v) => Math.min(98, Math.max(78, Math.round(v + (Math.random() - 0.5) * 4))));
+    }, 3200);
+    return () => clearInterval(id);
+  }, [isActive]);
+  const now = new Date();
+  const localTimeStr = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
+  return (
+    <div className="mt-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-5 py-4">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[9px] font-black uppercase tracking-[0.22em] text-white/25">Live Context Signals</span>
+        <span className="text-[9px] font-mono text-white/15 uppercase tracking-widest">Simulated Layer</span>
+      </div>
+      <div className="space-y-2 text-[10px] font-mono">
+        <div className="flex justify-between text-white/30"><span>Dwell Time</span><span className="text-white/50">{dwellSeconds}s</span></div>
+        <div className="flex justify-between text-white/30"><span>Local Time</span><span className="text-white/50">{localTimeStr}</span></div>
+        <div className="flex justify-between text-white/30"><span>GPS Confidence</span><span className="text-white/50">{locationConfidence}%</span></div>
+      </div>
+    </div>
+  );
+}
+
+function ContextModelPanel({ storedContext, isGrowing }: { storedContext: HadeStoredContext; isGrowing: boolean }) {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => { setMounted(true); }, []);
+  const prefs = mounted ? derivePreferences(storedContext) : [];
+  const recent = storedContext.interactionHistory.slice(0, 5);
+  return (
+    <div
+      className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-5 py-4 transition-all duration-500"
+      style={isGrowing ? { boxShadow: "0 0 0 1px rgba(255,255,255,0.1), 0 0 12px rgba(255,255,255,0.04)" } : {}}
+    >
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-[9px] font-black uppercase tracking-[0.22em] text-white/25">Your Context Model</span>
+        {isGrowing && (
+          <motion.span
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="text-[9px] font-mono text-white/30 uppercase tracking-widest"
+          >
+            Context evolving
+          </motion.span>
+        )}
+      </div>
+
+      {/* Signal inventory */}
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        {([
+          { label: "Vibes", count: storedContext.vibes.length },
+          { label: "Notes", count: storedContext.fieldNotes.length },
+          { label: "Queries", count: storedContext.interactionHistory.length },
+        ] as const).map(({ label, count }) => (
+          <div key={label} className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-2.5 text-center">
+            <p className="text-[18px] font-black text-white/50 leading-none">{count}</p>
+            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-white/20 mt-1">{label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Inferred preferences */}
+      {prefs.length > 0 && (
+        <div className="mb-4">
+          <p className="text-[8px] font-black uppercase tracking-[0.2em] text-white/20 mb-2">Inferred Preferences</p>
+          <div className="flex flex-wrap gap-1.5">
+            {prefs.map(pref => (
+              <span key={pref} className="rounded-full px-2.5 py-1 text-[9px] font-mono text-white/35 bg-white/[0.04] border border-white/[0.07]">
+                {pref}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Recent queries */}
+      {recent.length > 0 && (
+        <div>
+          <p className="text-[8px] font-black uppercase tracking-[0.2em] text-white/20 mb-2">Recent Signals</p>
+          <div className="flex flex-wrap gap-1.5">
+            {recent.map(r => (
+              <span key={r.id} className="rounded px-2 py-0.5 text-[9px] font-mono text-white/30 bg-white/[0.03] border border-white/[0.06] flex items-center gap-1.5">
+                <span className="text-white/20">{MODULE_ICONS[r.module]}</span>
+                {r.keyword}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {storedContext.interactionHistory.length === 0 && storedContext.vibes.length === 0 && (
+        <p className="text-[10px] font-mono text-white/15 italic">No context accumulated yet. Start exploring.</p>
+      )}
+    </div>
+  );
+}
+
+function SignalRefinementBar({ signal, onSignalChange, engineStatus, theme }: {
+  signal: string;
+  onSignalChange: (v: string) => void;
+  engineStatus: EngineStatus;
+  theme: typeof MODULE_THEMES[ModuleContext];
+}) {
+  return (
+    <motion.div
+      key="refinement-bar"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 8 }}
+      transition={{ duration: 0.3 }}
+      className="mb-5 rounded-2xl border border-ink/[0.08] bg-ink/[0.04] px-5 py-3.5"
+    >
+      <p className="text-[9px] font-black uppercase tracking-[0.22em] text-ink/30 mb-2.5">Refining Signal</p>
+      <input
+        value={signal}
+        onChange={(e) => onSignalChange(e.target.value)}
+        className="w-full bg-transparent text-[12px] font-mono text-ink/60 placeholder-ink/20 outline-none border-none"
+        placeholder="Refine your signal..."
+      />
+      <div className="flex items-center gap-2 mt-2.5">
+        <motion.div
+          animate={{ opacity: [0.3, 1, 0.3] }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+          className="h-1 w-1 flex-shrink-0 rounded-full"
+          style={{ backgroundColor: theme.primary }}
+        />
+        <span className="text-[9px] font-mono uppercase tracking-widest text-ink/30">
+          {engineStatus === "idle" ? "Observing" :
+           engineStatus === "listening" ? "Listening..." :
+           engineStatus === "understanding" ? "Understanding..." : "Adapting..."}
+        </span>
+      </div>
+    </motion.div>
+  );
+}
 
 function NeuralBackboneSheet({ open, onClose, llmChoice, onSelect }: {
   open: boolean;
@@ -328,9 +618,8 @@ function NeuralBackboneSheet({ open, onClose, llmChoice, onSelect }: {
   );
 }
 
-function UnifiedInputStep({ signal, setSignal, onNext, isLoading, onCaptureContext, onCreateVibe, onOpenBackbone, surfacedVibe, mainInputRef }: any) {
+function UnifiedInputStep({ signal, setSignal, onNext, isLoading, engineStatus, onCaptureContext, onCreateVibe, onOpenBackbone, surfacedVibe, mainInputRef }: any) {
   const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
-  const hasSignalInput = signal.combinedSignal.trim().length > 0;
   return (
     <div className="relative flex min-h-[600px] flex-col overflow-hidden rounded-[2.5rem] border border-white/40 bg-white/70 p-8 backdrop-blur-2xl shadow-xl md:p-12">
       <div className="flex-1">
@@ -452,18 +741,21 @@ function UnifiedInputStep({ signal, setSignal, onNext, isLoading, onCaptureConte
           </button>
         </div>
 
-        {/* Primary action — right side */}
-        <button
-          onClick={onNext}
-          disabled={isLoading || !hasSignalInput}
-          className="group flex items-center gap-3 rounded-full px-10 py-5 text-[11px] font-black uppercase tracking-widest text-white shadow-2xl transition-all hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-70"
-          style={{
-            background: isLoading ? "#6B7280" : theme.primary,
-            cursor: isLoading || !hasSignalInput ? "not-allowed" : "pointer",
-          }}
-        >
-          {isLoading ? "Orchestrating..." : "Explore the Moment →"}
-        </button>
+        {/* Engine status indicator — replaces submit button */}
+        <div className="flex items-center gap-2.5">
+          <motion.div
+            animate={{ opacity: [0.3, 1, 0.3] }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+            className="h-1.5 w-1.5 flex-shrink-0 rounded-full"
+            style={{ backgroundColor: theme.primary }}
+          />
+          <span className="text-[10px] font-black uppercase tracking-[0.22em] text-ink/30">
+            {isLoading ? "Orchestrating..." :
+             engineStatus === "listening" ? "Listening..." :
+             engineStatus === "understanding" ? "Understanding..." :
+             engineStatus === "adapting" ? "Adapting..." : "Ready"}
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -500,18 +792,27 @@ const ProcessingStep = React.memo(function ProcessingStep({ signal, onComplete, 
   );
 });
 
-function ResultStep({ signal, generatedOutput, onRestart, onGo, resultPulse, ugcInjected, surfacedVibe }: any) {
+function ResultStep({
+  signal, generatedOutput, onRestart, onGo, resultPulse, ugcInjected, surfacedVibe,
+  generatedAlternatives, rawApiMeta, isContextShift, previousOutput,
+  rankOrder, isReprocessing, isReranking,
+}: any) {
   const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
-  const displayKeyword =
-    generatedOutput?.keyword || generatedOutput?.primary?.keyword || "HADE Node";
+  const [whyOpen, setWhyOpen] = useState(false);
+  const displayKeyword = generatedOutput?.keyword || generatedOutput?.primary?.keyword || "HADE Node";
   const displayDesc =
     generatedOutput?.description ||
     generatedOutput?.primary?.description ||
     "Processing Istanbul signal...";
 
+  // Derive ordered alternatives from rankOrder
+  const orderedResults: DecisionNode[] = Array.isArray(rankOrder) && Array.isArray(generatedAlternatives)
+    ? (rankOrder as number[]).map((idx: number) => generatedAlternatives[idx]).filter(Boolean)
+    : (generatedAlternatives ?? []);
+
   return (
     <div>
-      {/* Field Note card — surfaces when vibe matches search context */}
+      {/* Field Note card */}
       <AnimatePresence>
         {surfacedVibe && (
           <motion.div
@@ -527,13 +828,12 @@ function ResultStep({ signal, generatedOutput, onRestart, onGo, resultPulse, ugc
               <motion.div animate={{ scale: [1, 1.3, 1] }} transition={{ repeat: Infinity, duration: 2 }}
                 className="h-1.5 w-1.5 rounded-full" style={{ background: ORGANIC.sage }} />
               <span className="text-[9px] font-black uppercase tracking-[0.22em]" style={{ color: ORGANIC.sage }}>
-                Field Note  ·  Sense Map Match
+                Field Note · Sense Map Match
               </span>
             </div>
             <div className="px-6 py-5">
-              <p className="text-base italic leading-snug mb-3"
-                style={{ color: ORGANIC.charcoal, fontFamily: 'Georgia, serif' }}>
-                "{surfacedVibe.raw}"
+              <p className="text-base italic leading-snug mb-3" style={{ color: ORGANIC.charcoal, fontFamily: 'Georgia, serif' }}>
+                &ldquo;{surfacedVibe.raw}&rdquo;
               </p>
               <div className="flex flex-wrap gap-2">
                 {surfacedVibe.chips.map((chip: string) => (
@@ -564,43 +864,134 @@ function ResultStep({ signal, generatedOutput, onRestart, onGo, resultPulse, ugc
         )}
       </AnimatePresence>
 
-      {/* Pulse wrapper */}
+      {/* Signal delta banner */}
+      <AnimatePresence>
+        {isContextShift && previousOutput && (
+          <motion.div
+            key="context-shift"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="mb-3 flex items-center gap-2 px-1 text-[9px] font-mono text-white/25"
+          >
+            <span className="text-white/15">↳ shifted from</span>
+            <span className="text-white/40">{previousOutput.keyword}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Pulse + reprocessing wrapper */}
       <motion.div
         animate={resultPulse ? { scale: [1, 1.012, 1] } : {}}
         transition={{ duration: 0.9, ease: "easeOut" }}
       >
-    <div className="relative flex min-h-[600px] flex-col overflow-hidden rounded-[2.5rem] bg-ink p-8 text-white shadow-2xl md:p-12">
-      <div className="flex-1">
-        <div className="flex items-center gap-3 mb-10">
-          <div className="h-1 w-12 rounded-full" style={{ background: theme.primary }} />
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">{theme.tagline} Output</span>
+        <div className="relative flex min-h-[600px] flex-col overflow-hidden rounded-[2.5rem] bg-ink p-8 text-white shadow-2xl md:p-12">
+          {/* Reprocessing overlay */}
+          <AnimatePresence>
+            {isReprocessing && (
+              <motion.div
+                key="reprocessing-overlay"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 z-10 rounded-[2.5rem] bg-black/50 backdrop-blur-[2px] flex items-center justify-center"
+              >
+                <div className="flex items-center gap-3">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
+                    className="h-3 w-3 rounded-full border border-white/30 border-t-white/80"
+                  />
+                  <span className="text-[10px] font-black uppercase tracking-[0.22em] text-white/50">
+                    Re-processing Signal...
+                  </span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-10">
+              <div className="h-1 w-12 rounded-full" style={{ background: theme.primary }} />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">{theme.tagline} Output</span>
+            </div>
+            <h4 className="text-5xl font-bold tracking-tighter leading-tight max-w-xl">{theme.resultTitle}</h4>
+            <p className="mt-8 text-2xl text-white/50 leading-relaxed font-light max-w-2xl italic">
+              &ldquo;We&rsquo;ve tuned the Istanbul pulse for{' '}
+              <span style={{ textDecorationLine: 'underline', textDecorationColor: theme.primary, textDecorationThickness: '1px', textUnderlineOffset: '8px', color: 'white', opacity: 1 }}>{displayKeyword}</span>
+              . {displayDesc}&rdquo;
+            </p>
+            {generatedOutput.tags?.length > 0 && (
+              <div className="mt-6 flex flex-wrap gap-2">
+                {generatedOutput.tags.slice(0, 4).map((tag: string) => (
+                  <span key={tag} className="rounded-full border border-white/20 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white/70">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Why this section */}
+            <WhyThisSection
+              moduleContext={signal.moduleContext}
+              urgency={rawApiMeta?.urgency}
+              novelty={rawApiMeta?.novelty}
+              tags={rawApiMeta?.tags ?? []}
+              isOpen={whyOpen}
+              onToggle={() => setWhyOpen(p => !p)}
+            />
+          </div>
+
+          <div className="mt-12 flex flex-col md:flex-row items-center gap-6 border-t border-white/5 pt-10">
+            <button onClick={onGo} className="group w-full md:w-auto flex items-center justify-center gap-4 rounded-full bg-white px-12 py-6 text-[13px] font-black uppercase tracking-[0.15em] text-ink transition-all hover:scale-[1.05]">
+              {theme.action}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
+            <button onClick={onRestart} className="text-[11px] font-black uppercase tracking-widest text-white/20 hover:text-white transition">Try Another Signal</button>
+          </div>
         </div>
-        <h4 className="text-5xl font-bold tracking-tighter leading-tight max-w-xl">{theme.resultTitle}</h4>
-        <p className="mt-8 text-2xl text-white/50 leading-relaxed font-light max-w-2xl italic">
-          "We've tuned the Istanbul pulse for{' '}
-          <span style={{ textDecorationLine: 'underline', textDecorationColor: theme.primary, textDecorationThickness: '1px', textUnderlineOffset: '8px', color: 'white', opacity: 1 }}>{displayKeyword}</span>
-          . {displayDesc}"
-        </p>
-        {generatedOutput.tags?.length > 0 && (
-          <div className="mt-6 flex flex-wrap gap-2">
-            {generatedOutput.tags.slice(0, 4).map((tag: string) => (
-              <span key={tag} className="rounded-full border border-white/20 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white/70">
-                {tag}
-              </span>
+      </motion.div>
+
+      {/* Alternatives */}
+      {orderedResults.length > 0 && (
+        <div className="mt-4">
+          <div className="flex items-center gap-3 mb-3 px-1">
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20">Re-ranked Alternatives</p>
+            {/* Reranking banner */}
+            <AnimatePresence>
+              {isReranking && (
+                <motion.div
+                  key="rerank-banner"
+                  initial={{ opacity: 0, x: -4 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-[0.18em] text-white/30"
+                >
+                  <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.2, repeat: Infinity }}>◈</motion.span>
+                  <span>Contextual Re-ranking Applied</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+          <div className="space-y-2">
+            {orderedResults.map((alt: DecisionNode, i: number) => (
+              <motion.div
+                key={alt.keyword}
+                layout
+                transition={{ type: "spring", stiffness: 300, damping: 32 }}
+                className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3"
+              >
+                <span className="text-[9px] font-black font-mono text-white/20 w-4 flex-shrink-0">#{i + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-black text-white/60 truncate">{alt.keyword}</p>
+                  <p className="text-[10px] text-white/25 truncate">{alt.subNode}</p>
+                </div>
+              </motion.div>
             ))}
           </div>
-        )}
-      </div>
-
-      <div className="mt-12 flex flex-col md:flex-row items-center gap-6 border-t border-white/5 pt-10">
-        <button onClick={onGo} className="group w-full md:w-auto flex items-center justify-center gap-4 rounded-full bg-white px-12 py-6 text-[13px] font-black uppercase tracking-[0.15em] text-ink transition-all hover:scale-[1.05]">
-          {theme.action}
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </button>
-        <button onClick={onRestart} className="text-[11px] font-black uppercase tracking-widest text-white/20 hover:text-white transition">Ignore Recommendation</button>
-      </div>
-    </div>
-      </motion.div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1443,7 +1834,38 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
   const [vibeActiveTab, setVibeActiveTab] = useState<"voice" | "text">("voice");
   const [storedVibes, setStoredVibes] = useState<StoredVibe[]>([]);
 
+  // Phase 2: Signal intelligence
+  const [generatedAlternatives, setGeneratedAlternatives] = useState<DecisionNode[]>([]);
+  const [rawApiMeta, setRawApiMeta] = useState<{ urgency?: "high" | "medium" | "low"; novelty?: number; tags: string[] }>({ tags: [] });
+  const [previousOutput, setPreviousOutput] = useState<GeneratedOutput | null>(null);
+  const [isContextShift, setIsContextShift] = useState(false);
+  const [engineStatus, setEngineStatus] = useState<EngineStatus>("idle");
+  const autoTriggerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleExploreRef = useRef<() => void>(() => {});
+
+  // Phase 3: Persistent context
+  const [storedContext, setStoredContext] = useState<HadeStoredContext>(EMPTY_CONTEXT);
+  const [contextGrowing, setContextGrowing] = useState(false);
+  const contextGrowingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Phase 4: Continuous intelligence
+  const [rankOrder, setRankOrder] = useState<number[]>([0, 1, 2]);
+  const [isReprocessing, setIsReprocessing] = useState(false);
+  const [isReranking, setIsReranking] = useState(false);
+  const lastActivityRef = useRef<number>(Date.now());
+  const rerankBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const theme = MODULE_THEMES[signal.moduleContext as ModuleContext];
+
+  // Phase 3: SSR-safe context hydration
+  useEffect(() => { setStoredContext(loadContext()); }, []);
+
+  // Phase 3: Context growth pulse
+  const triggerContextGrowth = useCallback(() => {
+    setContextGrowing(true);
+    if (contextGrowingTimerRef.current) clearTimeout(contextGrowingTimerRef.current);
+    contextGrowingTimerRef.current = setTimeout(() => setContextGrowing(false), 2000);
+  }, []);
 
   const handleTimerComplete = useCallback(() => {
     // Only mark timer complete if we're still processing.
@@ -1462,7 +1884,16 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
       setResultPulse(true);
       setTimeout(() => setResultPulse(false), 900);
     }
-  }, [step]);
+
+    // Phase 3: Persist field note to localStorage context
+    const newNote: FieldNote = { id: `note-${Date.now()}`, text: newSignal, timestamp: Date.now() };
+    setStoredContext((prev) => {
+      const updated = { ...prev, fieldNotes: [newNote, ...prev.fieldNotes] };
+      saveContext(updated);
+      return updated;
+    });
+    triggerContextGrowth();
+  }, [step, triggerContextGrowth]);
 
   // Vibe Creator handler — isolated from all Discovery step-machine state
   const handleVibeCapture = useCallback(() => {
@@ -1480,6 +1911,14 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
     };
     setStoredVibes((prev) => [newVibe, ...prev]);
 
+    // Phase 3: Persist vibe to localStorage context
+    setStoredContext((prev) => {
+      const updated = { ...prev, vibes: [newVibe, ...prev.vibes] };
+      saveContext(updated);
+      return updated;
+    });
+    triggerContextGrowth();
+
     setTimeout(() => {
       setVibeMode("confirmed");
       setIsLoading(false);
@@ -1489,7 +1928,7 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
         setVibeMode("idle");
       }, 900);
     }, 1900);
-  }, [vibeRaw]);
+  }, [vibeRaw, triggerContextGrowth]);
 
   // Gate: when data is ready, Llama exits immediately; Gemini waits for timer pulse.
   // Claude uses its own setTimeout path in handleExplore and is excluded here.
@@ -1509,6 +1948,62 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
       setIsLoading(false);
     }
   }, [step]);
+
+  // Phase 2: Auto-trigger — fires 800ms after typing stops (input OR result step)
+  useEffect(() => {
+    if ((step !== "input" && step !== "result") || isLoading || isReprocessing) {
+      if (step !== "input" && step !== "result") setEngineStatus("idle");
+      return;
+    }
+    const trimmed = signal.combinedSignal.trim();
+    if (trimmed.length < 8) {
+      setEngineStatus("idle");
+      if (autoTriggerRef.current) clearTimeout(autoTriggerRef.current);
+      return;
+    }
+    // Only auto-trigger from input step; result step uses the SignalRefinementBar
+    if (step === "input") {
+      setEngineStatus("listening");
+      if (autoTriggerRef.current) clearTimeout(autoTriggerRef.current);
+      autoTriggerRef.current = setTimeout(() => {
+        setEngineStatus("understanding");
+        handleExploreRef.current();
+      }, 800);
+    }
+    return () => { if (autoTriggerRef.current) clearTimeout(autoTriggerRef.current); };
+  }, [signal.combinedSignal, signal.moduleContext, step, isLoading, isReprocessing]);
+
+  // Phase 4: Activity tracker — keeps lastActivityRef updated
+  useEffect(() => {
+    const update = () => { lastActivityRef.current = Date.now(); };
+    window.addEventListener("mousemove", update);
+    window.addEventListener("keydown", update);
+    window.addEventListener("touchstart", update);
+    return () => {
+      window.removeEventListener("mousemove", update);
+      window.removeEventListener("keydown", update);
+      window.removeEventListener("touchstart", update);
+    };
+  }, []);
+
+  // Phase 4: Background re-ranker — swaps top-2 alternatives after 8s inactivity
+  useEffect(() => {
+    if (step !== "result" || generatedAlternatives.length < 2) return;
+    const id = setInterval(() => {
+      const inactive = Date.now() - lastActivityRef.current > 8000;
+      if (!inactive) return;
+      setRankOrder((prev) => {
+        const next = [...prev];
+        [next[0], next[1]] = [next[1], next[0]];
+        return next;
+      });
+      setIsReranking(true);
+      triggerContextGrowth();
+      if (rerankBannerTimerRef.current) clearTimeout(rerankBannerTimerRef.current);
+      rerankBannerTimerRef.current = setTimeout(() => setIsReranking(false), 2500);
+    }, 12500);
+    return () => clearInterval(id);
+  }, [step, generatedAlternatives.length, triggerContextGrowth]);
 
   // Focus restoration after the modal closes.
   useEffect(() => {
@@ -1585,8 +2080,73 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
 
   const handleExplore = async () => {
     // Interaction guard: prevent overlapping requests/transitions.
-    if (isLoading) return;
+    if (isLoading || isReprocessing) return;
 
+    const inResultMode = step === "result";
+
+    // Phase 4: In-result reprocessing — update in-place, skip timing gates
+    if (inResultMode) {
+      setIsReprocessing(true);
+      try {
+        const combinedForRequest = [signal.combinedSignal, ugcSignal]
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .join(" — ");
+        const contextSummary = buildContextSummary(storedContext);
+        const enrichedSignal = contextSummary ? `${combinedForRequest} [ctx: ${contextSummary}]` : combinedForRequest;
+        const requestPayload = {
+          signal: enrichedSignal,
+          module: signal.moduleContext,
+          location: signal.location,
+          llmChoice: signal.llmChoice,
+        };
+        const res = await fetch("/api/generate-hade", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestPayload),
+        });
+        const rawData: unknown = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(`API error (${res.status})`);
+
+        const typedRaw = rawData as HadeApiResponse | null;
+        const parsedCardData = mapApiResponseToOutput(rawData, signal.moduleContext, signal.combinedSignal);
+        const rawAlternatives = Array.isArray(typedRaw?.alternatives) ? typedRaw!.alternatives : [];
+
+        setGeneratedOutput(parsedCardData);
+        setGeneratedAlternatives(rawAlternatives);
+        setRawApiMeta({
+          urgency: typedRaw?.urgency,
+          novelty: typeof typedRaw?.novelty === "number" ? typedRaw.novelty : undefined,
+          tags: Array.isArray(typedRaw?.tags) ? typedRaw!.tags : [],
+        });
+        setRankOrder([0, 1, 2]);
+        setEngineStatus("adapting");
+        setTimeout(() => setEngineStatus("idle"), 1200);
+
+        // Save interaction record
+        const newInteraction: InteractionRecord = {
+          id: `interaction-${Date.now()}`,
+          keyword: parsedCardData.keyword,
+          subNode: parsedCardData.subNode,
+          module: signal.moduleContext,
+          novelty: typeof typedRaw?.novelty === "number" ? typedRaw.novelty : undefined,
+          timestamp: Date.now(),
+        };
+        setStoredContext((prev) => {
+          const updated = { ...prev, interactionHistory: [newInteraction, ...prev.interactionHistory] };
+          saveContext(updated);
+          return updated;
+        });
+        triggerContextGrowth();
+      } catch (error) {
+        console.error("[HADE Demo] Re-processing failed", error);
+      } finally {
+        setIsReprocessing(false);
+      }
+      return;
+    }
+
+    // Standard mode: full step-machine flow
     setApiError(null);
     exploreStartRef.current = Date.now();
     setTimerDone(false);
@@ -1600,13 +2160,16 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
         .filter(Boolean)
         .join(" — ");
 
+      // Phase 3: Enrich signal with stored context summary
+      const contextSummary = buildContextSummary(storedContext);
+      const enrichedSignal = contextSummary ? `${combinedForRequest} [ctx: ${contextSummary}]` : combinedForRequest;
+
       const requestPayload = {
-        signal: combinedForRequest,
+        signal: enrichedSignal,
         module: signal.moduleContext,
         location: signal.location,
         llmChoice: signal.llmChoice,
       };
-      // Async fix: await fetch + await response parse with full error handling.
       console.log("[HADE Demo] Request payload", requestPayload);
 
       const res = await fetch("/api/generate-hade", {
@@ -1622,14 +2185,42 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
         throw new Error(`API error (${res.status})`);
       }
 
-      const parsedCardData = mapApiResponseToOutput(
-        rawData,
-        signal.moduleContext,
-        signal.combinedSignal,
-      );
+      const typedRaw = rawData as HadeApiResponse | null;
+      const parsedCardData = mapApiResponseToOutput(rawData, signal.moduleContext, signal.combinedSignal);
+
+      // Phase 2: Capture alternatives + meta from raw response
+      const rawAlternatives = Array.isArray(typedRaw?.alternatives) ? typedRaw!.alternatives : [];
+      setGeneratedAlternatives(rawAlternatives);
+      setRawApiMeta({
+        urgency: typedRaw?.urgency,
+        novelty: typeof typedRaw?.novelty === "number" ? typedRaw.novelty : undefined,
+        tags: Array.isArray(typedRaw?.tags) ? typedRaw!.tags : [],
+      });
+      if (previousOutput) {
+        setIsContextShift(previousOutput.keyword !== parsedCardData.keyword);
+      }
+      setPreviousOutput(parsedCardData);
+      setRankOrder([0, 1, 2]); // Reset rank for fresh results
+
       console.log("FINAL MAPPED DATA:", parsedCardData);
       setGeneratedOutput(parsedCardData);
       setDataReady(true); // Only set on success — prevents stale timer-gate transitions on error.
+
+      // Phase 3: Save interaction record (use typedRaw directly — rawApiMeta is batched/stale here)
+      const newInteraction: InteractionRecord = {
+        id: `interaction-${Date.now()}`,
+        keyword: parsedCardData.keyword,
+        subNode: parsedCardData.subNode,
+        module: signal.moduleContext,
+        novelty: typeof typedRaw?.novelty === "number" ? typedRaw.novelty : undefined,
+        timestamp: Date.now(),
+      };
+      setStoredContext((prev) => {
+        const updated = { ...prev, interactionHistory: [newInteraction, ...prev.interactionHistory] };
+        saveContext(updated);
+        return updated;
+      });
+      triggerContextGrowth();
 
       // Llama fast-path: bypass timer gate immediately once data is available.
       if (signal.llmChoice === "llama") {
@@ -1657,6 +2248,11 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
     }
   };
 
+  // Phase 2: Keep handleExploreRef current every render so setTimeout closures are never stale
+  // Must be after handleExplore to avoid TypeScript use-before-declaration
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { handleExploreRef.current = handleExplore; });
+
   const restart = () => {
     setStep("input");
     setSignal(DEFAULT_SIGNAL);
@@ -1669,7 +2265,18 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
     setUgcInjected(false);
     setResultPulse(false);
     setVibeMode("idle");
-    // storedVibes intentionally preserved — vibes persist across restarts
+    // Phase 2+4 resets
+    setGeneratedAlternatives([]);
+    setRawApiMeta({ tags: [] });
+    setPreviousOutput(null);
+    setIsContextShift(false);
+    setEngineStatus("idle");
+    setRankOrder([0, 1, 2]);
+    setIsReprocessing(false);
+    setIsReranking(false);
+    if (rerankBannerTimerRef.current) clearTimeout(rerankBannerTimerRef.current);
+    if (autoTriggerRef.current) clearTimeout(autoTriggerRef.current);
+    // storedVibes + storedContext intentionally preserved — context persists across restarts
   };
 
   const safeOutput =
@@ -1710,6 +2317,18 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
         )}
       </AnimatePresence>
 
+      {/* Phase 4: Signal refinement bar — visible when result is showing */}
+      <AnimatePresence>
+        {step === "result" && (
+          <SignalRefinementBar
+            signal={signal.combinedSignal}
+            onSignalChange={(v) => setSignal((prev: SignalState) => ({ ...prev, combinedSignal: v }))}
+            engineStatus={engineStatus}
+            theme={theme}
+          />
+        )}
+      </AnimatePresence>
+
       <AnimatePresence mode="popLayout" initial={false}>
         <motion.div key={step} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.6, ease: [0.19, 1, 0.22, 1] }}>
           {step === "input" && (
@@ -1718,6 +2337,7 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
               setSignal={setSignal}
               onNext={handleExplore}
               isLoading={isLoading}
+              engineStatus={engineStatus}
               onCaptureContext={() => setUgcSheetOpen(true)}
               onCreateVibe={openVibeCreator}
               onOpenBackbone={() => setBackboneSheetOpen(true)}
@@ -1742,10 +2362,34 @@ export default function HadeEngineSystemsDiagram({ accent }: HadeEngineProps) {
               resultPulse={resultPulse}
               ugcInjected={ugcInjected}
               surfacedVibe={surfacedVibe}
+              generatedAlternatives={generatedAlternatives}
+              rawApiMeta={rawApiMeta}
+              isContextShift={isContextShift}
+              previousOutput={previousOutput}
+              rankOrder={rankOrder}
+              isReprocessing={isReprocessing}
+              isReranking={isReranking}
             />
           )}
           {step === "mapping" && <TacticalMapStep signal={signal} generatedOutput={safeOutput} onRestart={restart} resultPulse={resultPulse} ugcInjected={ugcInjected} />}
         </motion.div>
+      </AnimatePresence>
+
+      {/* Phase 2+3: Passive signals + context model — dark container for visual continuity with result card */}
+      <AnimatePresence>
+        {step === "result" && (
+          <motion.div
+            key="intelligence-panels"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="mt-4 rounded-[2.5rem] bg-ink px-8 py-8 text-white"
+          >
+            <PassiveSignalsPanel isActive={step === "result"} />
+            <ContextModelPanel storedContext={storedContext} isGrowing={contextGrowing} />
+          </motion.div>
+        )}
       </AnimatePresence>
 
       {/* Vibe Creator overlay — isolated Vibe state machine, never touches StepId */}
