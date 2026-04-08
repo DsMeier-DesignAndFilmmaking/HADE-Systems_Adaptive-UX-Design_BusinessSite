@@ -21,15 +21,16 @@ function formatSeconds(value: number) {
 
 /**
  * Classify behavioral state and produce the full model output.
- * Wraps computation with performance.now() so Inference Latency
- * reflects real execution time rather than a formula estimate.
+ * Inference latency is NOT measured here — doing so inside the render
+ * path causes SSR/hydration mismatches because performance.now() returns
+ * different values on server vs client. Instead, callers that need the
+ * measured latency should time this function externally in a useEffect.
  */
 export function buildPseudoModelOutput(
   rankedProducts: RankedProduct[],
   comparedProductIds: string[],
   sessionSignals: SessionSignals
 ): PseudoModelOutput {
-  const t0 = typeof performance !== "undefined" ? performance.now() : Date.now();
 
   const leader = rankedProducts[0];
   const runnerUp = rankedProducts[1];
@@ -132,14 +133,14 @@ export function buildPseudoModelOutput(
   const rankingSpread = Math.max(0, leader.score - runnerUp.score);
   const featureCoverage = topSignals.length;
 
-  const t1 = typeof performance !== "undefined" ? performance.now() : Date.now();
-  const measuredLatency = Math.round((t1 - t0) * 100) / 100;
-
   const metrics: ModelMetric[] = [
     { label: "Signal Volume", value: signalVolume.toFixed(1), detail: "Total interaction evidence ingested into the active ranking window." },
     { label: "Ranking Spread", value: rankingSpread.toFixed(2), detail: "Gap between the top-ranked option and the runner-up after scoring." },
     { label: "Feature Coverage", value: `${featureCoverage}/4`, detail: "How many distinct features are materially contributing right now." },
-    { label: "Inference Latency", value: `${measuredLatency}ms`, detail: "Measured execution time for state classification and ranking computation." },
+    // Inference Latency value is intentionally left as a placeholder ("—").
+    // The real measured value is injected by the orchestrator via useEffect
+    // to avoid an SSR/hydration mismatch from performance.now() in render.
+    { label: "Inference Latency", value: "—", detail: "Measured execution time for state classification and ranking computation." },
   ];
 
   /* ── Pipeline Log ─────────────────────────────────────────────────── */
@@ -179,7 +180,7 @@ export function buildPseudoModelOutput(
       lowConfidence,
       conflictSignals,
       topSignals,
-      inferenceLatencyMs: measuredLatency,
+      inferenceLatencyMs: 0,
     },
     metrics,
     logs,

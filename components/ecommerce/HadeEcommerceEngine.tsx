@@ -78,6 +78,8 @@ export default function HadeEcommerceEngine() {
     )
   );
   const [microFeedback, setMicroFeedback] = useState<MicroFeedbackEntry[]>([]);
+  // "—" on SSR/hydration; replaced with a real measurement client-side via useEffect
+  const [inferenceLatencyDisplay, setInferenceLatencyDisplay] = useState("—");
 
   /* ── Refs ──────────────────────────────────────────────────────────── */
   const dwellIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -102,6 +104,17 @@ export default function HadeEcommerceEngine() {
   const liveStateAssessment = modelOutput.assessment;
   const dynamicNarrative = buildDynamicNarrative(liveStateAssessment, comparedProductIds, sessionSignals);
   const causeEffectMessage = buildCauseEffectMessage(liveStateAssessment, leader, leaderChangeSummary);
+
+  /* ── Effect: Measure inference latency client-side only ──────────── */
+  // performance.now() during render causes an SSR/hydration mismatch.
+  // Instead, time a dry call here (post-mount, client-only) and display it.
+  useEffect(() => {
+    const t0 = performance.now();
+    buildPseudoModelOutput(displayedRankedProducts, comparedProductIds, sessionSignals);
+    const elapsed = performance.now() - t0;
+    setInferenceLatencyDisplay(`${Math.round(elapsed * 100) / 100}ms`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayedRankedProducts, comparedProductIds, sessionSignals]);
 
   /* ── Effect: Delayed status tag to prevent rapid flicker ─────────── */
   useEffect(() => {
@@ -639,7 +652,9 @@ export default function HadeEcommerceEngine() {
           <div className="flex flex-col gap-4">
             <DetectedStatePanel assessment={liveStateAssessment} />
             <StateTimelinePanel timeline={stateTimeline} />
-            <ModelMetricsPanel metrics={modelOutput.metrics} />
+            <ModelMetricsPanel metrics={modelOutput.metrics.map((m) =>
+              m.label === "Inference Latency" ? { ...m, value: inferenceLatencyDisplay } : m
+            )} />
             <SystemLogPanel logs={modelOutput.logs} />
             <ReasoningTracePanel topSignals={liveStateAssessment.topSignals} />
             <AdaptiveOutputPanel
