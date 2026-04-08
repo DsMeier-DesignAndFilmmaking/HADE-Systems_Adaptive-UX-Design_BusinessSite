@@ -162,7 +162,7 @@ export default function HadeEcommerceEngine() {
 
   /* ── Helpers ──────────────────────────────────────────────────────── */
   const pushMicroFeedback = (message: string, tone: MicroFeedbackEntry["tone"] = "neutral") => {
-    setMicroFeedback((prev) => [{ id: `${Date.now()}-${message}`, message, tone }, ...prev].slice(0, 4));
+    setMicroFeedback((prev) => [{ id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, message, tone }, ...prev].slice(0, 4));
   };
 
   const handleApplyInsight = () => {
