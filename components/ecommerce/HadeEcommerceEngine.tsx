@@ -160,13 +160,19 @@ export default function HadeEcommerceEngine() {
 
       if (Array.isArray(persisted.stateTimeline)) {
         setStateTimeline(
-          persisted.stateTimeline.filter(
-            (item): item is StateTransition =>
-              !!item &&
-              typeof item === "object" &&
-              typeof item.state === "string" &&
-              typeof item.timestamp === "string"
-          )
+          persisted.stateTimeline
+            .filter(
+              (item): item is StateTransition =>
+                !!item &&
+                typeof item === "object" &&
+                typeof item.state === "string" &&
+                typeof item.timestamp === "string"
+            )
+            .map((item, i) => ({
+              ...item,
+              // Backfill id for entries persisted before the id field was added
+              id: item.id ?? `hydrated-${i}-${item.state}-${item.timestamp}`,
+            }))
         );
       }
     } catch {
@@ -334,6 +340,7 @@ export default function HadeEcommerceEngine() {
       const next = [
         ...prev,
         {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
           state: liveStateAssessment.state,
           timestamp: formatTransitionTime(new Date()),
         },

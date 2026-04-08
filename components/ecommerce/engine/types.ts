@@ -80,6 +80,7 @@ export interface StateAssessment {
 }
 
 export interface StateTransition {
+  id: string;
   state: BehaviorState;
   timestamp: string;
 }

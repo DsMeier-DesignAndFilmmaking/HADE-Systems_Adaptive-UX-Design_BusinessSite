@@ -16,7 +16,7 @@ export default function StateTimelinePanel({ timeline }: StateTimelinePanelProps
       <div className="space-y-2">
         {timeline.length > 0 ? (
           timeline.map((item) => (
-            <div key={`${item.state}-${item.timestamp}`} className="rounded-xl border border-ink/6 bg-white/60 px-3 py-2.5">
+            <div key={item.id} className="rounded-xl border border-ink/6 bg-white/60 px-3 py-2.5">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[11px] font-medium text-ink/68">{item.state}</p>
                 <span className="text-[10px] font-mono text-ink/38">{item.timestamp}</span>
