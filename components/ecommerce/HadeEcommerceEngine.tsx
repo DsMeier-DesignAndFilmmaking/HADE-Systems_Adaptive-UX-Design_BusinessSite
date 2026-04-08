@@ -67,6 +67,9 @@ export default function HadeEcommerceEngine() {
   const [rankChangeIds, setRankChangeIds] = useState<string[]>([]);
   const [rankDeltaMap, setRankDeltaMap] = useState<RankDeltaMap>({});
   const [isProcessingUpdate, setIsProcessingUpdate] = useState(false);
+  // Delayed visible status prevents rapid text flicker on the status tag
+  const [visibleStatus, setVisibleStatus] = useState(false);
+  const statusDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [stateTimeline, setStateTimeline] = useState<StateTransition[]>([]);
   const [leaderChangeSummary, setLeaderChangeSummary] = useState<LeaderChangeSummary>(() =>
     buildLeaderChangeSummary(
@@ -99,6 +102,17 @@ export default function HadeEcommerceEngine() {
   const liveStateAssessment = modelOutput.assessment;
   const dynamicNarrative = buildDynamicNarrative(liveStateAssessment, comparedProductIds, sessionSignals);
   const causeEffectMessage = buildCauseEffectMessage(liveStateAssessment, leader, leaderChangeSummary);
+
+  /* ── Effect: Delayed status tag to prevent rapid flicker ─────────── */
+  useEffect(() => {
+    if (statusDelayRef.current) clearTimeout(statusDelayRef.current);
+    statusDelayRef.current = setTimeout(() => {
+      setVisibleStatus(isProcessingUpdate);
+    }, 300);
+    return () => {
+      if (statusDelayRef.current) clearTimeout(statusDelayRef.current);
+    };
+  }, [isProcessingUpdate]);
 
   /* ── Helpers ──────────────────────────────────────────────────────── */
   const pushMicroFeedback = (message: string, tone: MicroFeedbackEntry["tone"] = "neutral") => {
@@ -568,10 +582,13 @@ export default function HadeEcommerceEngine() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-ink/10 bg-white/70 px-3.5 py-2">
-              <span className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: isProcessingUpdate ? GOLD : "#16a34a" }} />
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/45">
-                {isProcessingUpdate ? "Updating Ranked Output" : "Adaptive Ranking Stable"}
+            <div className="inline-flex min-w-[220px] items-center gap-2 rounded-full border border-ink/10 bg-white/70 px-3.5 py-2 transition-colors duration-300">
+              <span
+                className="h-1.5 w-1.5 flex-shrink-0 rounded-full animate-pulse transition-colors duration-300"
+                style={{ background: visibleStatus ? GOLD : "#16a34a" }}
+              />
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/45 transition-opacity duration-300">
+                {visibleStatus ? "Updating Ranked Output" : "Adaptive Ranking Stable"}
               </p>
             </div>
 
@@ -586,7 +603,7 @@ export default function HadeEcommerceEngine() {
 
         {/* ── Live Narrative ──────────────────────────────────────────── */}
         <LiveNarrative
-          stateKey={`${liveStateAssessment.state}-${comparedProductIds.length}-${Math.floor(sessionSignals.idleTime)}`}
+          stateKey={`${liveStateAssessment.state}-${comparedProductIds.length}`}
           dynamicNarrative={dynamicNarrative}
           causeEffectMessage={causeEffectMessage}
         />
