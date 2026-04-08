@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 /* ─── Engine Modules ────────────────────────────────────────────────── */
 import type {
@@ -81,6 +81,24 @@ export default function HadeEcommerceEngine() {
   // "—" on SSR/hydration; replaced with a real measurement client-side via useEffect
   const [inferenceLatencyDisplay, setInferenceLatencyDisplay] = useState("—");
 
+  // ── Human-in-the-loop approval gate ─────────────────────────────────
+  const [approvedData, setApprovedData] = useState(() => {
+    const r = rankProducts(createInitialSignalMap(), [], createInitialSessionSignals());
+    const a = buildPseudoModelOutput(r, [], createInitialSessionSignals()).assessment;
+    const lcs = buildLeaderChangeSummary(r[0], createInitialSessionSignals());
+    return {
+      stateKey: `${a.state}-0`,
+      narrative: buildDynamicNarrative(a, [], createInitialSessionSignals()),
+      causeEffect: buildCauseEffectMessage(a, r[0], lcs),
+    };
+  });
+  const [pendingData, setPendingData] = useState<{
+    stateKey: string;
+    narrative: string;
+    causeEffect: string;
+  } | null>(null);
+  const [hasPendingInsight, setHasPendingInsight] = useState(false);
+
   /* ── Refs ──────────────────────────────────────────────────────────── */
   const dwellIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const rankingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -97,6 +115,7 @@ export default function HadeEcommerceEngine() {
   const comparedCountRef = useRef(0);
   const leaderIdRef = useRef<string | null>(null);
   const sectionRef = useRef<HTMLElement | null>(null);
+  const approvedStateKeyRef = useRef("Browsing-0");
 
   /* ── Derived Values ───────────────────────────────────────────────── */
   const leader = displayedRankedProducts[0];
@@ -127,9 +146,31 @@ export default function HadeEcommerceEngine() {
     };
   }, [isProcessingUpdate]);
 
+  /* ── Effect: Queue pending insight on behavioral state change ────── */
+  useEffect(() => {
+    const liveStateKey = `${liveStateAssessment.state}-${comparedProductIds.length}`;
+    if (liveStateKey === approvedStateKeyRef.current) return;
+
+    setPendingData({
+      stateKey: liveStateKey,
+      narrative: dynamicNarrative,
+      causeEffect: causeEffectMessage,
+    });
+    setHasPendingInsight(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveStateAssessment.state, comparedProductIds.length]);
+
   /* ── Helpers ──────────────────────────────────────────────────────── */
   const pushMicroFeedback = (message: string, tone: MicroFeedbackEntry["tone"] = "neutral") => {
     setMicroFeedback((prev) => [{ id: `${Date.now()}-${message}`, message, tone }, ...prev].slice(0, 4));
+  };
+
+  const handleApplyInsight = () => {
+    if (!pendingData) return;
+    setApprovedData(pendingData);
+    approvedStateKeyRef.current = pendingData.stateKey;
+    setPendingData(null);
+    setHasPendingInsight(false);
   };
 
   /* ── Effect: Hydrate from localStorage ────────────────────────────── */
@@ -546,6 +587,18 @@ export default function HadeEcommerceEngine() {
     lastActivityAtRef.current = Date.now();
     lastDecayAtRef.current = Date.now();
 
+    const initialAssessment = buildPseudoModelOutput(initialRankedProducts, [], initialSessionSignals).assessment;
+    const initialLcs = buildLeaderChangeSummary(initialRankedProducts[0], initialSessionSignals);
+    const resetApproved = {
+      stateKey: `${initialAssessment.state}-0`,
+      narrative: buildDynamicNarrative(initialAssessment, [], initialSessionSignals),
+      causeEffect: buildCauseEffectMessage(initialAssessment, initialRankedProducts[0], initialLcs),
+    };
+    setApprovedData(resetApproved);
+    approvedStateKeyRef.current = resetApproved.stateKey;
+    setPendingData(null);
+    setHasPendingInsight(false);
+
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(STORAGE_KEY);
     }
@@ -605,10 +658,16 @@ export default function HadeEcommerceEngine() {
             <div className="inline-flex min-w-[220px] items-center gap-2 rounded-full border border-ink/10 bg-white/70 px-3.5 py-2 transition-colors duration-300">
               <span
                 className="h-1.5 w-1.5 flex-shrink-0 rounded-full animate-pulse transition-colors duration-300"
-                style={{ background: visibleStatus ? GOLD : "#16a34a" }}
+                style={{
+                  background: hasPendingInsight ? GOLD : visibleStatus ? GOLD : "#16a34a",
+                }}
               />
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/45 transition-opacity duration-300">
-                {visibleStatus ? "Updating Ranked Output" : "Adaptive Ranking Stable"}
+                {hasPendingInsight
+                  ? "Insight Ready"
+                  : visibleStatus
+                  ? "Updating Ranked Output"
+                  : "Adaptive Ranking Stable"}
               </p>
             </div>
 
@@ -621,12 +680,47 @@ export default function HadeEcommerceEngine() {
           </div>
         </div>
 
-        {/* ── Live Narrative ──────────────────────────────────────────── */}
+        {/* ── Live Narrative — displays approved data only ─────────────── */}
         <LiveNarrative
-          stateKey={`${liveStateAssessment.state}-${comparedProductIds.length}`}
-          dynamicNarrative={dynamicNarrative}
-          causeEffectMessage={causeEffectMessage}
+          stateKey={approvedData.stateKey}
+          dynamicNarrative={approvedData.narrative}
+          causeEffectMessage={approvedData.causeEffect}
         />
+
+        {/* ── Human-in-the-loop CTA ────────────────────────────────────── */}
+        <AnimatePresence>
+          {hasPendingInsight && (
+            <motion.div
+              key="insight-cta"
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="mb-4 flex items-center justify-between gap-3 rounded-2xl border px-4 py-3"
+              style={{
+                background: "rgba(196,146,42,0.06)",
+                borderColor: "rgba(196,146,42,0.22)",
+              }}
+            >
+              <div className="flex items-center gap-2.5">
+                <span
+                  className="h-2 w-2 flex-shrink-0 rounded-full animate-pulse"
+                  style={{ background: GOLD }}
+                />
+                <p className="text-[11px] font-medium" style={{ color: "rgba(196,146,42,0.88)" }}>
+                  New behavioral insight detected — model updated its state assessment
+                </p>
+              </div>
+              <button
+                onClick={handleApplyInsight}
+                className="flex-shrink-0 rounded-full px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-white transition-opacity hover:opacity-85"
+                style={{ background: GOLD }}
+              >
+                Apply Insight
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ── Behavioral Shift + Adaptive Feedback ────────────────────── */}
         <div className="mb-6 grid gap-3 md:grid-cols-[1.1fr_0.9fr]">
