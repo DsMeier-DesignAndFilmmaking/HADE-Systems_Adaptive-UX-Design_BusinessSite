@@ -17,7 +17,7 @@ export default function ModelMetricsPanel({ metrics }: ModelMetricsPanelProps) {
         {metrics.map((metric) => (
           <div key={metric.label} className="rounded-xl border border-ink/6 bg-white/60 px-3 py-3">
             <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-ink/35">{metric.label}</p>
-            <p className="mt-1 text-sm font-semibold text-ink/75">{metric.value}</p>
+            <p className="mt-1 text-sm font-semibold text-ink/75" suppressHydrationWarning>{metric.value}</p>
             <p className="mt-1 text-[10px] leading-relaxed text-ink/45">{metric.detail}</p>
           </div>
         ))}
